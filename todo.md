@@ -56,4 +56,5 @@
 - [x] Add a financial-pulse experience that explains period-over-period spending changes, emerging categories, and reserve coverage using existing ledger data.
 - [x] Add a user-initiated transaction-review queue for uncategorized and unusual expenses, with safe category and note resolution actions.
 - [x] Perform a read-only audit of the three pending Supabase query files, including schema, data, RLS, authentication, production-safety, and feature-dependency impact; do not apply or modify database changes.
-- [ ] Regenerate and validate a clean independent source-code archive for the latest verified Finwise project without credentials or transient workspace files.
+- [x] Regenerate and validate a clean independent source-code archive for the latest verified Finwise project without credentials or transient workspace files.
+- [x] Commit and push the latest verified Finwise source to the authorized GitHub repository without credentials, workspace metadata, dependencies, or build artifacts.
