@@ -58,3 +58,11 @@
 - [x] Perform a read-only audit of the three pending Supabase query files, including schema, data, RLS, authentication, production-safety, and feature-dependency impact; do not apply or modify database changes.
 - [x] Regenerate and validate a clean independent source-code archive for the latest verified Finwise project without credentials or transient workspace files.
 - [x] Commit and push the latest verified Finwise source to the authorized GitHub repository without credentials, workspace metadata, dependencies, or build artifacts.
+- [x] Perform a read-only authenticated smoke test of the live deployment’s overview, Money Pulse, and Transaction Review routes without modifying production data.
+- [x] Create a clearly synthetic live test workspace and verify populated Overview, Money Pulse, and Transaction Review states before the user removes the test account.
+- [x] Perform an end-to-end live test with clearly synthetic financial data across accounts, transactions, analytics, Money Pulse, Transaction Review, budgets, Settings, and export entry points; do not perform destructive actions.
+- [x] Exercise the transaction CSV, budget-history CSV, JSON backup, and CSV-template downloads in the live browser and document confirmed download behavior or limitations.
+- [x] Determine why the live budget-history CSV control did not create a browser download despite its authenticated export endpoint returning a valid non-empty attachment response; apply the approved client-side cleanup-timing correction and verify it with typecheck, regression tests, and a production build.
+- [x] Archive the authorized live smoke-test report inside the source repository for traceability without changing application behavior.
+- [ ] After an explicitly approved GitHub push and Vercel auto-deployment, verify that the live budget-history CSV control now downloads successfully in the browser.
+- [ ] Commit and push the user-approved budget-history download correction, regression coverage, smoke-test report, and checklist update to GitHub, then confirm the automatic Vercel deployment.

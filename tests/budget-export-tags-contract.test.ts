@@ -37,6 +37,7 @@ describe("budget export, tags, and onboarding polish contracts", () => {
     expect(exportRoute).toContain("emergency_reserve");
     expect(exportRoute).toContain("onboarding_status");
     expect(exportCard).toContain('new URLSearchParams({ scope: "budget-history" })');
+    expect(exportCard).toContain("window.setTimeout(() => URL.revokeObjectURL(url), 1_500)");
     expect(onboarding).toContain('role="progressbar"');
     expect(onboarding).toContain("Step {step + 1} of {steps.length}");
     expect(onboarding).toContain("finwise-reveal");

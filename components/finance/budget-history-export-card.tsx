@@ -25,7 +25,7 @@ export function BudgetHistoryExportCard() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_500);
   }, "Budget history and preferences exported.");
 
   return <Card className="p-5 sm:p-6">
