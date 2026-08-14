@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight, CheckCircle2, LockKeyhole, Sparkle } from "lucide-react";
 import { toast } from "sonner";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/primitives";
+import { FinwiseLogo } from "@/components/branding/finwise-logo";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
@@ -50,16 +52,15 @@ export function AuthScreen() {
     <main className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.1fr_.9fr]">
         <section className="relative hidden overflow-hidden border-r border-[var(--line)] p-12 lg:flex lg:flex-col">
-          <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_10%_10%,rgba(167,181,255,.14),transparent_27%),radial-gradient(circle_at_80%_80%,rgba(126,200,227,.10),transparent_30%)]" />
-          <div className="relative flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent)] font-bold text-[#161a2a]">F</div>
-            <span className="font-display text-xl font-semibold">finwise</span>
-          </div>
-          <div className="relative my-auto max-w-xl">
+          <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_10%_10%,rgba(208,170,97,.12),transparent_27%),radial-gradient(circle_at_80%_80%,rgba(62,94,121,.10),transparent_30%)]" />
+          <Link href="/" aria-label="Finwise home" className="finwise-reveal relative w-fit rounded-lg outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--canvas)]">
+            <FinwiseLogo className="!h-14" />
+          </Link>
+          <div className="finwise-reveal finwise-delay-1 relative my-auto max-w-xl">
             <p className="mb-5 text-xs font-medium uppercase tracking-[.2em] text-[var(--accent)]">A calmer money practice</p>
             <h1 className="font-display text-5xl font-semibold leading-[1.04] tracking-tight">Know what your money is doing — without the noise.</h1>
             <p className="mt-6 max-w-md text-base leading-7 text-[var(--muted)]">A private, structured workspace for everyday money decisions and the long view.</p>
-            <div className="mt-10 grid gap-4">
+            <div className="finwise-stagger mt-10 grid gap-4">
               {points.map((item) => (
                 <div key={item} className="flex items-center gap-3 text-sm text-[var(--muted)]">
                   <CheckCircle2 size={17} className="text-[var(--accent)]" />
@@ -72,11 +73,10 @@ export function AuthScreen() {
         </section>
 
         <section className="flex items-center justify-center px-5 py-10 sm:px-8">
-          <div className="w-full max-w-md">
-            <div className="mb-10 flex items-center gap-3 lg:hidden">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent)] font-bold text-[#161a2a]">F</div>
-              <span className="font-display text-xl font-semibold">finwise</span>
-            </div>
+          <div className="finwise-reveal finwise-delay-2 w-full max-w-md">
+            <Link href="/" aria-label="Finwise home" className="mb-10 block w-fit rounded-lg outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--canvas)] lg:hidden">
+              <FinwiseLogo className="!h-14" />
+            </Link>
             <p className="text-xs font-medium uppercase tracking-[.18em] text-[var(--muted)]">Private workspace</p>
             <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight">{mode === "sign-in" ? "Welcome back" : "Create your workspace"}</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{mode === "sign-in" ? "Sign in to continue where you left off." : "Your financial workspace starts clean and stays yours."}</p>

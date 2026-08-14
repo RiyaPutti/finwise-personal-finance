@@ -6,12 +6,12 @@ import type { Account, Budget, Category, FinanceSnapshot, GoalContribution, Savi
 import { parseBackup } from "./import";
 import { DEFAULT_WORKSPACE_CURRENCY } from "./currency";
 
-export const defaultWorkspaceSettings: UserSettings = { user_id: "", currency: DEFAULT_WORKSPACE_CURRENCY, emergency_reserve: 0, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 100 };
+export const defaultWorkspaceSettings: UserSettings = { user_id: "", currency: DEFAULT_WORKSPACE_CURRENCY, emergency_reserve: 0, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 100, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
 const defaultSettings = defaultWorkspaceSettings;
 const emptySnapshot: FinanceSnapshot = { profile: null, settings: defaultSettings, accounts: [], categories: [], transactions: [], budgets: [], goals: [], contributions: [] };
 const normalize = <T extends Record<string, unknown>>(record: T): T => {
-  const numeric = ["amount", "opening_balance", "target_amount", "emergency_reserve", "upcoming_commitments", "small_purchase_threshold"];
-  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, numeric.includes(key) ? Number(value ?? 0) : value])) as T;
+  const numeric = ["amount", "opening_balance", "target_amount", "emergency_reserve", "upcoming_commitments", "small_purchase_threshold", "budget_watch_warning_percent", "budget_watch_critical_percent"];
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, numeric.includes(key) ? (value === null ? null : Number(value ?? 0)) : value])) as T;
 };
 
 async function currentUserId() {
@@ -73,7 +73,7 @@ export const financeStore = {
   async createTransfer(input: { source_account_id: string; destination_account_id: string; amount: number; description: string; transaction_date: string; notes?: string | null }) {
     await mutate("transfer.create", { input });
   },
-  async saveBudget(input: Pick<Budget, "category_id" | "amount" | "starts_on" | "ends_on">, id?: string) {
+  async saveBudget(input: Pick<Budget, "category_id" | "amount" | "starts_on" | "ends_on"> & Partial<Pick<Budget, "budget_watch_warning_percent" | "budget_watch_critical_percent">>, id?: string) {
     await mutate("budget.save", { input, id });
   },
   async deleteBudget(id: string) { await mutate("budget.delete", { id }); },

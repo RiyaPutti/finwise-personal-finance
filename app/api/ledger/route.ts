@@ -84,7 +84,14 @@ export async function POST(request: NextRequest) {
         result = await supabase.from("goal_contributions").insert({ user_id: user.id, goal_id: id.parse(data.goal_id), amount: z.coerce.number().positive().parse(data.amount), note: z.string().max(2000).optional().parse(data.note) || null });
         break;
       case "settings.update": {
-        const input = z.object({ currency: z.string().regex(/^[A-Z]{3}$/).optional(), emergency_reserve: z.coerce.number().min(0).optional(), upcoming_commitments: z.coerce.number().min(0).optional(), small_purchase_threshold: z.coerce.number().min(0).optional() }).parse(data.input);
+        const input = z.object({ currency: z.string().regex(/^[A-Z]{3}$/).optional(), emergency_reserve: z.coerce.number().min(0).optional(), upcoming_commitments: z.coerce.number().min(0).optional(), small_purchase_threshold: z.coerce.number().min(0).optional(), onboarding_status: z.enum(["active", "dismissed", "completed"]).optional(), budget_watch_enabled: z.boolean().optional(), budget_watch_warning_percent: z.coerce.number().int().min(1).max(99).optional(), budget_watch_critical_percent: z.coerce.number().int().min(2).max(100).optional(), budget_watch_warning_label: z.string().trim().min(1).max(32).optional(), budget_watch_warning_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), budget_watch_critical_label: z.string().trim().min(1).max(32).optional(), budget_watch_critical_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), backup_reminder_last_acknowledged_on: z.string().date().nullable().optional() }).parse(data.input);
+        if (input.budget_watch_warning_percent !== undefined || input.budget_watch_critical_percent !== undefined) {
+          const { data: current, error: currentError } = await supabase.from("user_settings").select("budget_watch_warning_percent, budget_watch_critical_percent").eq("user_id", user.id).single();
+          if (currentError || !current) throw new Error("Unable to read your current budget-watch preferences.");
+          const warning = input.budget_watch_warning_percent ?? current.budget_watch_warning_percent;
+          const critical = input.budget_watch_critical_percent ?? current.budget_watch_critical_percent;
+          if (critical <= warning) throw new Error("The critical budget threshold must be higher than the warning threshold.");
+        }
         result = await supabase.from("user_settings").update(input).eq("user_id", user.id);
         break;
       }

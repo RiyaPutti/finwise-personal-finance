@@ -1,4 +1,4 @@
-import { endOfMonth, format, isWithinInterval, parseISO, startOfMonth, subMonths } from "date-fns";
+import { addDays, addMonths, addYears, differenceInCalendarDays, endOfMonth, format, isAfter, isBefore, isWithinInterval, parseISO, startOfMonth, subMonths } from "date-fns";
 import type { Account, AccountType, Budget, Category, GoalContribution, SavingsGoal, Transaction, UserSettings } from "./types";
 import { classifyPaymentMethod } from "./payment-methods";
 import { DEFAULT_WORKSPACE_CURRENCY } from "./currency";
@@ -91,6 +91,28 @@ export function budgetProgress(budget: Budget, transactions: Transaction[]) {
   return { spent, remaining: budget.amount - spent, percent: Math.min(100, (spent / budget.amount) * 100) };
 }
 
+export type BudgetWatchState = "healthy" | "warning" | "critical" | "over";
+export function budgetWatchStatus(budget: Budget, transactions: Transaction[], settings: UserSettings | null | undefined, now = new Date()) {
+  const today = format(now, "yyyy-MM-dd");
+  const progress = budgetProgress(budget, transactions);
+  const rawPercent = budget.amount > 0 ? (progress.spent / budget.amount) * 100 : 0;
+  const warning = Number(budget.budget_watch_warning_percent ?? settings?.budget_watch_warning_percent ?? 75);
+  const critical = Math.max(warning, Number(budget.budget_watch_critical_percent ?? settings?.budget_watch_critical_percent ?? 90));
+  const active = Boolean(settings?.budget_watch_enabled) && budget.starts_on <= today && budget.ends_on >= today;
+  const state: BudgetWatchState = !active || rawPercent < warning ? "healthy" : rawPercent >= 100 ? "over" : rawPercent >= critical ? "critical" : "warning";
+  return { ...progress, rawPercent, state, active };
+}
+
+export function activeBudgetWatchAlerts(budgets: Budget[], transactions: Transaction[], settings: UserSettings | null | undefined, now = new Date()) {
+  return budgets.map((budget) => ({ budget, ...budgetWatchStatus(budget, transactions, settings, now) })).filter((alert) => alert.state !== "healthy");
+}
+
+export function backupReminderDue(settings: UserSettings | null | undefined, now = new Date()) {
+  const acknowledgedOn = settings?.backup_reminder_last_acknowledged_on;
+  if (!acknowledgedOn || !/^\d{4}-\d{2}-\d{2}$/.test(acknowledgedOn)) return true;
+  return differenceInCalendarDays(now, parseISO(acknowledgedOn)) >= 30;
+}
+
 export function goalProgress(goal: SavingsGoal, contributions: GoalContribution[]) {
   const current = contributions.filter((contribution) => contribution.goal_id === goal.id).reduce((sum, contribution) => sum + monetary(contribution.amount), 0);
   return { current, remaining: Math.max(0, goal.target_amount - current), percent: Math.max(0, Math.min(100, current / goal.target_amount * 100)) };
@@ -110,6 +132,124 @@ export function buildInsights(transactions: Transaction[], categories: Category[
   if (paymentTotals.unknown > 0) insights.push(`${formatMoney(paymentTotals.unknown)} of spending has no payment method recorded yet.`);
   insights.push(`Your average expense was ${formatMoney(total / expenses.length)}.`);
   return insights;
+}
+
+export interface CashFlowForecastDay {
+  date: string;
+  label: string;
+  income: number;
+  expense: number;
+  net: number;
+  projectedSafeToSpend: number;
+  recurringCount: number;
+}
+
+function nextRecurrence(date: Date, interval: Transaction["recurrence_interval"]) {
+  if (interval === "weekly") return addDays(date, 7);
+  if (interval === "yearly") return addYears(date, 1);
+  return addMonths(date, 1);
+}
+
+export function cashFlowForecast(accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, horizonDays = 30, now = new Date()) {
+  const start = parseISO(format(now, "yyyy-MM-dd"));
+  const end = addDays(start, Math.max(0, horizonDays - 1));
+  const metrics = summaryMetrics(accounts, transactions, settings, now);
+  const daily = Array.from({ length: horizonDays }, (_, index) => {
+    const date = addDays(start, index);
+    return { date: format(date, "yyyy-MM-dd"), label: format(date, "MMM d"), income: 0, expense: 0, net: 0, projectedSafeToSpend: 0, recurringCount: 0 };
+  });
+
+  transactions.filter((transaction) => transaction.is_recurring && transaction.next_due_date && transaction.type !== "transfer").forEach((transaction) => {
+    let due = parseISO(transaction.next_due_date as string);
+    let attempts = 0;
+    while (isBefore(due, start) && attempts < 730) { due = nextRecurrence(due, transaction.recurrence_interval); attempts += 1; }
+    while (!isAfter(due, end) && attempts < 800) {
+      const day = daily.find((entry) => entry.date === format(due, "yyyy-MM-dd"));
+      if (day) {
+        if (transaction.type === "income") day.income += monetary(transaction.amount);
+        if (transaction.type === "expense") day.expense += monetary(transaction.amount);
+        day.recurringCount += 1;
+      }
+      due = nextRecurrence(due, transaction.recurrence_interval);
+      attempts += 1;
+    }
+  });
+
+  let projected = metrics.safeToSpend;
+  daily.forEach((day) => { day.net = day.income - day.expense; projected += day.net; day.projectedSafeToSpend = projected; });
+  return { startingSafeToSpend: metrics.safeToSpend, endingSafeToSpend: projected, days: daily, recurringItems: daily.reduce((sum, day) => sum + day.recurringCount, 0) };
+}
+
+export interface FinancialPulse {
+  currentSpending: number;
+  previousSpending: number;
+  spendingChange: number;
+  spendingChangePercent: number | null;
+  currentIncome: number;
+  previousIncome: number;
+  incomeChange: number;
+  topCategory: { name: string; value: number } | null;
+  emergingCategory: { name: string; increase: number } | null;
+  reserveCoverageMonths: number | null;
+}
+
+export function financialPulse(accounts: Account[], transactions: Transaction[], categories: Category[], settings: UserSettings | null | undefined, now = new Date()): FinancialPulse {
+  const currentRange = dateRangeForMonth(now);
+  const previousRange = dateRangeForMonth(subMonths(now, 1));
+  const current = transactions.filter((transaction) => transaction.transaction_date >= currentRange.start && transaction.transaction_date <= currentRange.end);
+  const previous = transactions.filter((transaction) => transaction.transaction_date >= previousRange.start && transaction.transaction_date <= previousRange.end);
+  const total = (items: Transaction[], type: Transaction["type"]) => items.filter((transaction) => transaction.type === type).reduce((sum, transaction) => sum + monetary(transaction.amount), 0);
+  const currentSpending = total(current, "expense");
+  const previousSpending = total(previous, "expense");
+  const currentIncome = total(current, "income");
+  const previousIncome = total(previous, "income");
+  const currentCategories = groupedExpensesByCategory(current.filter((transaction) => transaction.type === "expense"), categories);
+  const previousCategories = new Map(groupedExpensesByCategory(previous.filter((transaction) => transaction.type === "expense"), categories).map((category) => [category.name, category.value]));
+  const emerging = currentCategories.map((category) => ({ name: category.name, increase: category.value - (previousCategories.get(category.name) ?? 0) })).filter((category) => category.increase > 0).sort((a, b) => b.increase - a.increase)[0] ?? null;
+  const monthlyExpenseAverage = [0, 1, 2].map((offset) => periodExpenses(transactions, dateRangeForMonth(subMonths(now, offset)).start, dateRangeForMonth(subMonths(now, offset)).end).reduce((sum, transaction) => sum + monetary(transaction.amount), 0)).reduce((sum, value) => sum + value, 0) / 3;
+  const reserveBalance = summaryMetrics(accounts, transactions, settings, now).savingsAndReserves;
+  return {
+    currentSpending,
+    previousSpending,
+    spendingChange: currentSpending - previousSpending,
+    spendingChangePercent: previousSpending > 0 ? ((currentSpending - previousSpending) / previousSpending) * 100 : null,
+    currentIncome,
+    previousIncome,
+    incomeChange: currentIncome - previousIncome,
+    topCategory: currentCategories[0] ?? null,
+    emergingCategory: emerging,
+    reserveCoverageMonths: monthlyExpenseAverage > 0 ? reserveBalance / monthlyExpenseAverage : null,
+  };
+}
+
+export interface TransactionReviewItem {
+  transaction: Transaction;
+  reasons: ("uncategorized" | "unusual")[];
+  typicalAmount: number | null;
+}
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (!sorted.length) return 0;
+  const midpoint = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[midpoint] : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+}
+
+export function transactionReviewQueue(transactions: Transaction[]) {
+  const expenses = transactions.filter((transaction) => transaction.type === "expense");
+  const valuesByCategory = new Map<string, number[]>();
+  expenses.forEach((transaction) => {
+    if (!transaction.category_id) return;
+    const values = valuesByCategory.get(transaction.category_id) ?? [];
+    values.push(monetary(transaction.amount));
+    valuesByCategory.set(transaction.category_id, values);
+  });
+  return expenses.map((transaction): TransactionReviewItem | null => {
+    const typicalAmount = transaction.category_id ? median(valuesByCategory.get(transaction.category_id) ?? []) : null;
+    const unusual = Boolean(typicalAmount && (valuesByCategory.get(transaction.category_id as string)?.length ?? 0) >= 3 && monetary(transaction.amount) >= typicalAmount * 2 && !transaction.notes?.trim());
+    const reasons = [!transaction.category_id ? "uncategorized" : null, unusual ? "unusual" : null].filter(Boolean) as TransactionReviewItem["reasons"];
+    return reasons.length ? { transaction, reasons, typicalAmount } : null;
+  }).filter((item): item is TransactionReviewItem => Boolean(item)).sort((a, b) => b.transaction.transaction_date.localeCompare(a.transaction.transaction_date));
 }
 
 export function filterByDateRange<T extends { transaction_date?: string; contribution_date?: string }>(records: T[], start: string, end: string) {

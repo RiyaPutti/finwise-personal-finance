@@ -5,11 +5,16 @@ export type PaymentClassification = "cash" | "online" | "unknown";
 export type NeedWantType = "need" | "planned_want" | "impulse";
 export type TransferDirection = "in" | "out";
 export type ThemePreference = "dark" | "light" | "system";
+export type OnboardingStatus = "active" | "dismissed" | "completed";
 
 export interface Profile { id: string; display_name: string | null; }
 export interface UserSettings {
   user_id: string; currency: string; emergency_reserve: number; upcoming_commitments: number;
-  theme: ThemePreference; small_purchase_threshold: number;
+  theme: ThemePreference; small_purchase_threshold: number; onboarding_status: OnboardingStatus;
+  budget_watch_enabled: boolean; budget_watch_warning_percent: number; budget_watch_critical_percent: number;
+  budget_watch_warning_label: string; budget_watch_warning_color: string;
+  budget_watch_critical_label: string; budget_watch_critical_color: string;
+  backup_reminder_last_acknowledged_on: string | null;
 }
 export interface Category { id: string; user_id: string; name: string; icon: string; color: string; is_archived: boolean; }
 export interface Account {
@@ -25,6 +30,7 @@ export interface Transaction {
 }
 export interface Budget {
   id: string; user_id: string; category_id: string; amount: number; starts_on: string; ends_on: string;
+  budget_watch_warning_percent: number | null; budget_watch_critical_percent: number | null;
 }
 export interface SavingsGoal {
   id: string; user_id: string; name: string; target_amount: number; target_date: string | null;

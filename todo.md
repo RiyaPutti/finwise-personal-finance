@@ -4,5 +4,56 @@
 - [x] Replace the lime-dominant accent system with a cohesive premium palette across themes, controls, charts, navigation, and dialogs.
 - [x] Make every successful create and edit workflow close its modal and refresh the visible finance data.
 - [x] Add focused coverage for modal success handling, then run tests and a production build.
-- [ ] Regenerate the independent source archive with the verified UI and modal UX updates.
+- [x] Regenerate the independent source archive with the verified UI and modal UX updates.
 - [x] Replace remaining direct lime literals with the shared periwinkle palette and rerun the accent source audit.
+- [x] Audit existing logo locations, settings UI, Supabase clients, authentication guards, and repository status.
+- [x] Create separate Finwise monogram, horizontal logo, light-dark logo variants, favicon, and browser icon assets.
+- [x] Replace placeholder branding only in existing logo locations without altering the application layout or features.
+- [x] Implement a server-side authenticated account-deletion endpoint using a server-only Supabase service-role key.
+- [x] Add a typed, confirmed Delete Account flow in the existing Settings page with loading, success, error, sign-out, and redirect behavior.
+- [x] Add tests for ownership-restricted deletion request validation and account-deletion UI confirmation behavior.
+- [x] Verify types, tests, build, live authentication compatibility, and all logo asset references.
+- [x] Prepare a source checkpoint and request confirmation before any GitHub or Vercel deployment action.
+- [x] Make the Finwise logo navigation intentionally clickable in its existing authentication and workspace placements.
+- [x] Confirm the reference-directed gold monogram and outlined flowing-script Finwise wordmark meet the owner’s supplied visual standard without reverting to a serif or italic text substitute.
+- [x] Maintain a source-deliverable manifest for the primary, compact, dark, light, PNG app-icon, and favicon variants without using the branding board as an application asset.
+- [x] Verify visual fidelity with the owner, then checkpoint the focused logo replacement after the completed automated verification.
+- [x] Inventory and use only the owner-supplied Finwise PNG logo, mark, favicon, and application icon assets; remove all recreated-brand references.
+- [x] Reconcile the remaining semantic color utilities and literals across the existing interface with the Finwise navy, ivory, champagne, green, and red token system.
+- [x] Verify the asset integration, visual theme, source audit, typecheck, full tests, and production build without changing functional behavior.
+- [x] Replace residual direct color utilities and literals in affected finance screens with intentional Finwise semantic tokens or documented semantic chart colors.
+- [x] Perform and document targeted visual checks across key authenticated screens after the final palette cleanup.
+- [x] Inventory the newly supplied Finwise logo variants and select the cleaner owner-provided asset for each existing placement without modifying any image.
+- [x] Add a shared, accessible, restrained motion system for existing Finwise interface elements without changing layout or user workflows.
+- [x] Apply the shared restrained motion foundation to existing authentication, navigation, cards, dialogs, and selected list/data surfaces without changing workflows.
+- [x] Apply shared restrained motion to representative transaction, account, analysis, and calendar list or data-view collections without changing their behavior.
+- [x] Add regression coverage for shared motion use in representative list and data-view components.
+- [x] Extend shared motion to representative navigation, account, and analysis collections without changing component behavior.
+- [x] Verify the cleaner supplied asset selection, reduced-motion behavior, key screens, source audit, tests, and production build without publishing.
+- [x] Add direct motion hooks and test coverage for account and analysis collections, and document intentional shared coverage for dialogs.
+- [x] Run a final post-motion source audit and obtain targeted authenticated-screen visual checks before final delivery.
+- [x] Add explicit regression coverage that Finwise shared motion is suppressed for reduced-motion preferences.
+- [x] Restore the GoalDialog target-date input so the visual theme change does not alter its existing form behavior.
+- [x] Add regression coverage for the Finwise dark-gold token system and the unchanged GoalDialog target-date update.
+- [x] Increase the authentication-page Finwise logo modestly while retaining the owner-supplied asset, proportions, and placement area.
+- [x] Audit all current logo placements and use only an appropriate owner-supplied dark, light, or transparent-compatible variant; never remove or edit asset backgrounds.
+- [x] Verify both dark and light logo rendering, then run focused regression checks without changing application behavior.
+- [x] Add a guided first-run onboarding flow that introduces the existing Finwise workspace and can be completed or dismissed by each user.
+- [x] Add configurable monthly budget-alert preferences so each user can set and manage budget spending thresholds.
+- [x] Confirm whether budget alerts remain deterministic in-app indicators or also deliver scheduled notifications before creating any recurring job.
+- [x] Verify onboarding and budget-alert behavior with tests, source audit, and production build without publishing.
+- [x] Persist per-user onboarding completion and deterministic monthly budget-watch threshold preferences without adding scheduled delivery.
+- [x] Add a versioned SQL migration, TypeScript contract updates, and settings mutation validation for the new preferences.
+- [x] Build the first-run onboarding flow and in-app budget-watch indicators using the existing authenticated workspace, settings, and budget logic.
+- [x] Document the onboarding and in-app-only budget-watch behavior, including the required migration for independent Supabase projects.
+- [x] Add an authenticated CSV export covering budget history and the current user’s workspace preferences.
+- [x] Enhance the existing first-run onboarding with a visible progress indicator and restrained reduced-motion-aware step transitions.
+- [x] Add an optional custom budget-watch label and a validated color code, persisted per user and reflected in the Settings controls and in-app alert presentation.
+- [x] Add authenticated date-range filtering for the budget-history and preferences CSV export.
+- [x] Add optional per-budget watch warning and critical thresholds that override the workspace defaults only for the selected budget.
+- [x] Add a deterministic in-app Settings backup reminder with a one-click data-export action, without scheduled jobs or external notifications.
+- [x] Add a deterministic 30-day cash-flow forecast based on recorded recurring transactions, upcoming commitments, and current account balances.
+- [x] Add a financial-pulse experience that explains period-over-period spending changes, emerging categories, and reserve coverage using existing ledger data.
+- [x] Add a user-initiated transaction-review queue for uncategorized and unusual expenses, with safe category and note resolution actions.
+- [x] Perform a read-only audit of the three pending Supabase query files, including schema, data, RLS, authentication, production-safety, and feature-dependency impact; do not apply or modify database changes.
+- [ ] Regenerate and validate a clean independent source-code archive for the latest verified Finwise project without credentials or transient workspace files.

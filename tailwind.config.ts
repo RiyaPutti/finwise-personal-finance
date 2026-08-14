@@ -7,9 +7,16 @@ const config: Config = {
     extend: {
       colors: {
         lime: {
-          200: "#c7d0ff",
-          300: "#a7b5ff",
-          400: "#8d9fff",
+          200: "#e5cca0",
+          300: "#d0aa61",
+          400: "#b88d47",
+        },
+        blue: {
+          300: "#9eb4bd",
+        },
+        amber: {
+          100: "#f2e6cc",
+          300: "#d0aa61",
         },
       },
       borderRadius: { xl: "1rem", "2xl": "1.25rem", "3xl": "1.75rem" },
