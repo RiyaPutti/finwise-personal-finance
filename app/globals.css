@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --canvas: #f7f8fc; --sidebar: #ffffff; --panel: #ffffff; --raised: #f0f2f8; --raised-hover: #e7eaf4; --field: #fbfcff; --ink: #1c2133; --muted: #68728d; --line: #dfe4f0; --accent: #7488e8; --accent-soft: #e4e8ff; }
+.dark { --canvas: #0e1017; --sidebar: #131722; --panel: #181d2a; --raised: #202635; --raised-hover: #2a3244; --field: #141925; --ink: #f4f6ff; --muted: #a7b0c8; --line: #2b3448; --accent: #a7b5ff; --accent-soft: #252d50; }
+* { border-color: var(--line); }
+html { background: var(--canvas); }
+body { min-height: 100vh; background: var(--canvas); color: var(--ink); font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif; }
+button, input, select, textarea { font: inherit; }
+::selection { background: color-mix(in srgb, var(--accent) 42%, transparent); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { * { scroll-behavior: smooth; } }

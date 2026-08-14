@@ -1,0 +1,47 @@
+export type AccountType = "bank" | "cash" | "cash_reserve" | "savings" | "credit_card" | "investment" | "other";
+export type TransactionType = "income" | "expense" | "transfer";
+export type PaymentMethod = "cash" | "upi" | "debit_card" | "credit_card" | "bank_transfer" | "other";
+export type PaymentClassification = "cash" | "online" | "unknown";
+export type NeedWantType = "need" | "planned_want" | "impulse";
+export type TransferDirection = "in" | "out";
+export type ThemePreference = "dark" | "light" | "system";
+
+export interface Profile { id: string; display_name: string | null; }
+export interface UserSettings {
+  user_id: string; currency: string; emergency_reserve: number; upcoming_commitments: number;
+  theme: ThemePreference; small_purchase_threshold: number;
+}
+export interface Category { id: string; user_id: string; name: string; icon: string; color: string; is_archived: boolean; }
+export interface Account {
+  id: string; user_id: string; name: string; type: AccountType; opening_balance: number;
+  currency: string; is_archived: boolean; created_at: string;
+}
+export interface Transaction {
+  id: string; user_id: string; account_id: string; category_id: string | null; type: TransactionType;
+  transfer_id: string | null; transfer_direction: TransferDirection | null; amount: number; description: string;
+  transaction_date: string; payment_method: PaymentMethod | null; need_want: NeedWantType | null;
+  notes: string | null; is_recurring: boolean; recurrence_interval: "weekly" | "monthly" | "yearly" | null;
+  next_due_date: string | null; created_at: string;
+}
+export interface Budget {
+  id: string; user_id: string; category_id: string; amount: number; starts_on: string; ends_on: string;
+}
+export interface SavingsGoal {
+  id: string; user_id: string; name: string; target_amount: number; target_date: string | null;
+  color: string; is_archived: boolean; created_at: string;
+}
+export interface GoalContribution {
+  id: string; user_id: string; goal_id: string; amount: number; contribution_date: string; note: string | null;
+}
+
+export interface FinanceSnapshot {
+  profile: Profile | null; settings: UserSettings | null; accounts: Account[]; categories: Category[];
+  transactions: Transaction[]; budgets: Budget[]; goals: SavingsGoal[]; contributions: GoalContribution[];
+}
+
+export interface TransactionInput {
+  account_id: string; category_id?: string | null; type: Exclude<TransactionType, "transfer">; amount: number;
+  description: string; transaction_date: string; payment_method?: PaymentMethod | null;
+  need_want?: NeedWantType | null; notes?: string | null; is_recurring?: boolean;
+  recurrence_interval?: "weekly" | "monthly" | "yearly" | null; next_due_date?: string | null;
+}

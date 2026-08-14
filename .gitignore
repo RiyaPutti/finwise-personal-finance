@@ -1,0 +1,9 @@
+node_modules
+.next
+.project-config.json
+.env
+.env.*
+!.env.example
+coverage
+*.tsbuildinfo
+.DS_Store
