@@ -6,6 +6,7 @@ const root = process.cwd();
 const migration = readFileSync(resolve(root, "supabase/migrations/202608140003_onboarding_budget_watch.sql"), "utf8");
 const route = readFileSync(resolve(root, "app/api/ledger/route.ts"), "utf8");
 const onboarding = readFileSync(resolve(root, "components/finance/onboarding-flow.tsx"), "utf8");
+const workspace = readFileSync(resolve(root, "components/finance/workspace.tsx"), "utf8");
 const watchBanner = readFileSync(resolve(root, "components/finance/budget-watch-banner.tsx"), "utf8");
 const preferences = readFileSync(resolve(root, "components/finance/workspace-preferences-cards.tsx"), "utf8");
 
@@ -28,6 +29,7 @@ describe("onboarding and monthly budget watch contracts", () => {
 
   it("keeps onboarding and alert preferences in-app and free of timer-driven delivery", () => {
     expect(onboarding).toContain("financeStore.updateSettings({ onboarding_status: status })");
+    expect(workspace).toContain("{!loading ? <OnboardingFlow /> : null}");
     expect(preferences).toContain("financeStore.updateSettings({ budget_watch_enabled: enabled");
     expect(watchBanner).toContain("activeBudgetWatchAlerts");
     const featureSource = [onboarding, watchBanner, preferences].join("\n");

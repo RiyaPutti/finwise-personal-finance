@@ -64,5 +64,11 @@
 - [x] Exercise the transaction CSV, budget-history CSV, JSON backup, and CSV-template downloads in the live browser and document confirmed download behavior or limitations.
 - [x] Determine why the live budget-history CSV control did not create a browser download despite its authenticated export endpoint returning a valid non-empty attachment response; apply the approved client-side cleanup-timing correction and verify it with typecheck, regression tests, and a production build.
 - [x] Archive the authorized live smoke-test report inside the source repository for traceability without changing application behavior.
-- [ ] After an explicitly approved GitHub push and Vercel auto-deployment, verify that the live budget-history CSV control now downloads successfully in the browser.
-- [ ] Commit and push the user-approved budget-history download correction, regression coverage, smoke-test report, and checklist update to GitHub, then confirm the automatic Vercel deployment.
+- [x] After an explicitly approved GitHub push and Vercel auto-deployment, verify that the live budget-history CSV control now downloads successfully in the browser.
+- [x] Commit and push the user-approved budget-history download correction, regression coverage, smoke-test report, and checklist update to GitHub, then confirm the automatic Vercel deployment.
+- [x] Verify the synthetic Supabase Auth account identifier and remove only that authorized account plus its associated Finwise data, then confirm the cleanup.
+- [x] Run a read-only zero-count verification for the deleted synthetic user across Auth and every user-scoped Finwise table before closing the cleanup task.
+- [x] Capture an explicit zero-result for the deleted synthetic email in the Supabase Authentication users list before closing the cleanup task.
+- [x] Fix the completed Getting Started onboarding so it does not reappear when the user navigates between authenticated Finwise pages.
+- [ ] After an explicitly approved deployment, verify that a completed Getting Started flow remains closed while navigating between live authenticated Finwise pages.
+- [ ] Commit and push the user-approved onboarding persistence correction and regression coverage to GitHub, then confirm the Vercel auto-deployment.
