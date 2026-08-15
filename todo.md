@@ -97,4 +97,7 @@
 - [x] Retain only calm type-based account icons that are derived locally and never affect account data or financial behavior.
 - [x] Add an Archived Accounts view that separates inactive accounts from active account cards without changing balances or ledger history.
 - [x] Add a safe restore action for archived accounts and regression coverage that preserves account history.
-- [ ] Commit and push the approved account-management update to GitHub, then confirm the Vercel auto-deployment.
+- [x] Commit and push the approved account-management update to GitHub, then confirm the Vercel auto-deployment; commit 075f34a reports a successful deployment status.
+- [x] Diagnose and correct transfer-history rows that repeat the current account instead of naming the counterparty.
+- [x] Review and test incoming and outgoing transfer labels across the transaction history for clear account-direction semantics.
+- [ ] Commit and push the approved transfer-display correction to GitHub, then verify the Vercel deployment.
