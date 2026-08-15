@@ -73,8 +73,16 @@
 - [x] After an explicitly approved deployment, verify that a completed Getting Started flow remains closed while navigating between live authenticated Finwise pages.
 - [x] Commit and push the user-approved onboarding persistence correction and regression coverage to GitHub, then confirm the Vercel auto-deployment.
 - [x] Configure the server-only Supabase service-role credential in Vercel so the deployed Delete Account route can execute its authenticated cleanup.
-- [ ] Verify the deployed Delete Account route with a separate disposable account; do not submit the irreversible delete action for an active user solely to test configuration.
+- [x] Verify the deployed Delete Account route with a separate disposable account; do not submit the irreversible delete action for an active user solely to test configuration.
 - [x] Make Spend Analysis, Calendar, Budgets, Savings Goals, Reports, and Settings reliably accessible from the mobile navigation while preserving desktop navigation.
-- [ ] After an explicitly approved deployment, verify the mobile More menu reaches every Finwise section on the live Vercel site.
-- [ ] Commit and push the user-approved mobile navigation correction to GitHub, then confirm the existing Vercel production URL updates.
-- [ ] Create one clearly disposable test account, validate the configured Delete Account route, and confirm the disposable account no longer exists afterward.
+- [x] After an explicitly approved deployment, verify the mobile More menu reaches every Finwise section on the live Vercel site.
+- [x] Commit and push the user-approved mobile navigation correction to GitHub, then confirm the existing Vercel production URL updates.
+- [x] Create one clearly disposable test account, validate the configured Delete Account route, and confirm the disposable account no longer exists afterward.
+- [x] Confirm the deleted disposable account is rejected with an explicit Invalid login credentials response after the Delete Account route redirects to authentication.
+- [x] Corroborate the deployed mobile More control in production markup with the committed navigation contract that renders every Finwise destination from the same navigation list.
+- [x] Diagnose and repair the non-responsive account-card edit controls without changing account balances, ledger data, or reserve behavior.
+- [x] Remove the duplicate Cash reserve summary so each user-created account appears only once in the Accounts collection.
+- [x] Restore the pencil-only account edit affordance while retaining a reliably clickable and keyboard-focusable control.
+- [x] Add concise Cash reserve account-type guidance in the create and edit account form.
+- [x] Confirm account names and account types remain editable through the existing account dialog without changing financial logic.
+- [ ] Commit and push the user-approved account editor refinements to GitHub, then confirm the Vercel auto-deployment.
