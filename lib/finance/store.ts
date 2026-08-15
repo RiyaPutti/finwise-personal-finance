@@ -61,6 +61,9 @@ export const financeStore = {
   async archiveAccount(id: string, is_archived = true) {
     await mutate("account.archive", { id, is_archived });
   },
+  async deleteAccount(id: string) {
+    await mutate("account.delete", { id });
+  },
   async saveCategory(input: Pick<Category, "name" | "icon" | "color">, id?: string) {
     await mutate("category.save", { input, id });
   },

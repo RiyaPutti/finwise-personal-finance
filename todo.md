@@ -85,4 +85,16 @@
 - [x] Restore the pencil-only account edit affordance while retaining a reliably clickable and keyboard-focusable control.
 - [x] Add concise Cash reserve account-type guidance in the create and edit account form.
 - [x] Confirm account names and account types remain editable through the existing account dialog without changing financial logic.
-- [ ] Commit and push the user-approved account editor refinements to GitHub, then confirm the Vercel auto-deployment.
+- [x] Confirm that Vercel production deployed GitHub commit 0ab2427; Vercel reports the Production Deployment status as Ready for the account-editor refinement commit.
+- [x] Audit current account archival, transaction references, and account metadata persistence before adding lifecycle controls.
+- [x] Add an explicit archive confirmation and a safe permanent-delete option that protects accounts with financial history.
+- [x] Add persistent selectable account colours and icons with accessible defaults and visual account-card rendering.
+- [x] Do not create or apply an account-visual database migration; persistent colours and user-selected icons were removed at the owner’s request.
+- [x] Add regression coverage and validate the new account controls, then present the implementation for deployment approval.
+- [x] Remove the account colour picker, colour persistence, and pending account-visual database migration at the owner’s request.
+- [x] Retain only calm type-based account icons that are derived locally and never affect account data or financial behavior.
+- [x] Remove the account colour picker, colour persistence, and pending account-visual database migration at the owner’s request.
+- [x] Retain only calm type-based account icons that are derived locally and never affect account data or financial behavior.
+- [x] Add an Archived Accounts view that separates inactive accounts from active account cards without changing balances or ledger history.
+- [x] Add a safe restore action for archived accounts and regression coverage that preserves account history.
+- [ ] Commit and push the approved account-management update to GitHub, then confirm the Vercel auto-deployment.

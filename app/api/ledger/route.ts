@@ -32,12 +32,23 @@ export async function POST(request: NextRequest) {
       case "account.save": {
         const input = accountSchema.parse(data.input);
         const recordId = data.id ? id.parse(data.id) : null;
-        result = recordId ? await supabase.from("accounts").update(input).eq("id", recordId) : await supabase.from("accounts").insert({ ...input, user_id: user.id });
+        result = recordId ? await supabase.from("accounts").update(input).eq("id", recordId).eq("user_id", user.id) : await supabase.from("accounts").insert({ ...input, user_id: user.id });
         break;
       }
       case "account.archive":
-        result = await supabase.from("accounts").update({ is_archived: z.boolean().parse(data.is_archived) }).eq("id", id.parse(data.id));
+        result = await supabase.from("accounts").update({ is_archived: z.boolean().parse(data.is_archived) }).eq("id", id.parse(data.id)).eq("user_id", user.id);
         break;
+      case "account.delete": {
+        const accountId = id.parse(data.id);
+        const { data: account, error: accountError } = await supabase.from("accounts").select("id").eq("id", accountId).eq("user_id", user.id).maybeSingle();
+        if (accountError) throw accountError;
+        if (!account) throw new Error("Account not found.");
+        const { count, error: historyError } = await supabase.from("transactions").select("id", { count: "exact", head: true }).eq("account_id", accountId);
+        if (historyError) throw historyError;
+        if ((count ?? 0) > 0) throw new Error("Accounts with transaction history cannot be permanently deleted. Archive this account instead.");
+        result = await supabase.from("accounts").delete().eq("id", accountId).eq("user_id", user.id);
+        break;
+      }
       case "category.save": {
         const input = z.object({ name: z.string().trim().min(1).max(100), icon: z.string().max(32), color: z.string().regex(/^#(?:[A-Fa-f0-9]{6})$/) }).parse(data.input);
         const recordId = data.id ? id.parse(data.id) : null;
