@@ -70,5 +70,11 @@
 - [x] Run a read-only zero-count verification for the deleted synthetic user across Auth and every user-scoped Finwise table before closing the cleanup task.
 - [x] Capture an explicit zero-result for the deleted synthetic email in the Supabase Authentication users list before closing the cleanup task.
 - [x] Fix the completed Getting Started onboarding so it does not reappear when the user navigates between authenticated Finwise pages.
-- [ ] After an explicitly approved deployment, verify that a completed Getting Started flow remains closed while navigating between live authenticated Finwise pages.
-- [ ] Commit and push the user-approved onboarding persistence correction and regression coverage to GitHub, then confirm the Vercel auto-deployment.
+- [x] After an explicitly approved deployment, verify that a completed Getting Started flow remains closed while navigating between live authenticated Finwise pages.
+- [x] Commit and push the user-approved onboarding persistence correction and regression coverage to GitHub, then confirm the Vercel auto-deployment.
+- [x] Configure the server-only Supabase service-role credential in Vercel so the deployed Delete Account route can execute its authenticated cleanup.
+- [ ] Verify the deployed Delete Account route with a separate disposable account; do not submit the irreversible delete action for an active user solely to test configuration.
+- [x] Make Spend Analysis, Calendar, Budgets, Savings Goals, Reports, and Settings reliably accessible from the mobile navigation while preserving desktop navigation.
+- [ ] After an explicitly approved deployment, verify the mobile More menu reaches every Finwise section on the live Vercel site.
+- [ ] Commit and push the user-approved mobile navigation correction to GitHub, then confirm the existing Vercel production URL updates.
+- [ ] Create one clearly disposable test account, validate the configured Delete Account route, and confirm the disposable account no longer exists afterward.

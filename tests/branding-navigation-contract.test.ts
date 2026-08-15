@@ -15,4 +15,12 @@ describe("Finwise logo navigation", () => {
   it("keeps the workspace logo linked to the overview route", () => {
     expect(appShell).toContain('<Link href="/app/overview"');
   });
+
+  it("keeps every section reachable from the mobile More menu", () => {
+    expect(appShell).toContain('aria-label="Open all sections"');
+    expect(appShell).toContain('title="All sections"');
+    expect(appShell).toContain('aria-label="All Finwise sections"');
+    expect(appShell).toContain('navigation.slice(0, 4)');
+    expect(appShell).toContain('navigation.map(([slug, label, Icon])');
+  });
 });
