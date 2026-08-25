@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Wallet } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { useFinance } from "./finance-provider";
-import { summaryMetrics, formatMoney, monthlyTrend } from "@/lib/finance/calculations";
-import { TrendChart } from "./charts";
+import { emergencyReserveCoverage, formatMoney, monthlyReserveTrend, monthlyTrend, summaryMetrics } from "@/lib/finance/calculations";
+import { ReserveProgressChart, TrendChart } from "./charts";
 import { TransactionList } from "./transaction-list";
 
 function Metric({
@@ -66,9 +66,13 @@ function Metric({
 }
 
 export function OverviewScreen() {
-  const { accounts, transactions, settings, loading } = useFinance();
+  const { accounts, profile, transactions, settings, loading } = useFinance();
   const metrics = summaryMetrics(accounts, transactions, settings);
+  const reserveCoverage = emergencyReserveCoverage(accounts, transactions, settings);
+  const reserveTrend = monthlyReserveTrend(accounts, transactions);
+  const hasReserveAccount = accounts.some((account) => !account.is_archived && account.type === "cash_reserve");
   const currency = settings?.currency ?? "USD";
+  const firstName = profile?.display_name?.trim().split(/\s+/)[0] || null;
   const safeToSpendFormula =
     "Safe to Spend = max(0, active account balances excluding Cash reserve, Savings, Investments, and Credit cards − Emergency reserve − Upcoming commitments).";
 
@@ -90,11 +94,31 @@ export function OverviewScreen() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-medium uppercase tracking-[.18em] text-lime-300">Overview</p>
-          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">A clearer view of today.</h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">Balances and analytics stay tied to your actual ledger.</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">{firstName ? `Welcome back, ${firstName}.` : "A clearer view of today."}</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">{firstName ? "Here is a clear view of your money today." : "Balances and analytics stay tied to your actual ledger."}</p>
         </div>
         <Link href="/app/reports"><Button variant="quiet">View reports</Button></Link>
       </div>
+
+      {reserveCoverage.belowTarget ? (
+        <div role="status" aria-live="polite" className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center" style={{ borderColor: "#B8965A66", backgroundColor: "#B8965A18" }}>
+          <AlertTriangle size={19} className="mt-0.5 shrink-0 text-[#D8C38E] sm:mt-0" />
+          <div>
+            <p className="text-sm font-semibold">Emergency reserve is below your target</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{formatMoney(reserveCoverage.held, currency)} is held in active Cash reserve accounts against a {formatMoney(reserveCoverage.target, currency)} target. You are {formatMoney(reserveCoverage.shortfall, currency)} short. This is an in-app signal only; it does not move money or create a transfer.</p>
+          </div>
+          <Link className="shrink-0 text-sm font-semibold text-[var(--gold)] transition hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]" href="/app/settings">Edit target</Link>
+        </div>
+      ) : reserveCoverage.target > 0 && hasReserveAccount ? (
+        <div role="status" aria-live="polite" className="flex flex-col gap-3 rounded-2xl border border-[var(--positive)]/30 bg-[var(--positive-soft)] p-4 sm:flex-row sm:items-center">
+          <ShieldCheck size={19} className="mt-0.5 shrink-0 text-[var(--positive)] sm:mt-0" />
+          <div>
+            <p className="text-sm font-semibold">Emergency reserve target covered</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{formatMoney(reserveCoverage.held, currency)} is held in active Cash reserve accounts, meeting your {formatMoney(reserveCoverage.target, currency)} target. Your target remains a planning guardrail and does not move money.</p>
+          </div>
+          <Link className="shrink-0 text-sm font-semibold text-[var(--positive)] transition hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--positive)]" href="/app/settings">Edit target</Link>
+        </div>
+      ) : null}
 
       {!accounts.length ? (
         <Card>
@@ -158,6 +182,21 @@ export function OverviewScreen() {
               </Card>
             </div>
           </div>
+
+          <Card className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-display text-lg font-semibold">Emergency reserve progress</h2>
+                <p className="mt-1 text-xs text-[var(--muted)]">Month-end balance from active Cash reserve accounts · last six months</p>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
+                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#C6A15A]" />Cash reserve</span>
+                {reserveCoverage.target > 0 ? <span className="flex items-center gap-1.5"><i className="h-px w-3 border-t border-dashed border-[#D8C38E]" />Target</span> : null}
+              </div>
+            </div>
+            <ReserveProgressChart data={reserveTrend} currency={currency} target={reserveCoverage.target} hasReserveAccount={hasReserveAccount} />
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">The trend uses your opening balances and recorded ledger activity. Your reserve target is a planning reference and does not move money between accounts. The compact six-month view can evolve with real-user feedback.</p>
+          </Card>
 
           <div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
             <div>

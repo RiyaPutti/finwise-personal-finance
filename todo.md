@@ -108,4 +108,15 @@
 - [x] Add an exact Safe to Spend formula tooltip on the Overview page without changing the calculation.
 - [x] Add a visual emergency-reserve coverage indicator beside the Settings reserve field.
 - [x] Add regression coverage and validate the Safe to Spend clarity improvements.
-- [ ] Commit and push the approved Settings clarity update to GitHub, then verify the Vercel deployment.
+- [x] Commit and push the approved Settings clarity update to GitHub, then verify the Vercel deployment; commit 8d78682 reports a successful Vercel deployment.
+- [x] Add a ledger-derived monthly emergency-reserve progress chart to Overview without creating or changing financial records.
+- [x] Add a clear dashboard warning when reserve coverage falls below the user-defined emergency reserve target.
+- [x] Add regression coverage and validate reserve trend and warning behavior without changing Safe to Spend calculations.
+- [x] Add a clear reserve-target-achieved success state on Overview without changing financial calculations.
+- [x] Add a direct Overview link to edit the emergency reserve target in Settings.
+- [x] Add a concise reserve-chart guidance state that supports real-user feedback refinement.
+- [x] Personalize the authenticated homepage greeting with the signed-in user’s name while preserving the existing anonymous landing experience.
+- [x] Add regression coverage, validate the refinements, and commit/push the authorized GitHub release for Vercel deployment.
+- [x] Confirm the root homepage continues routing unauthenticated visitors through the existing authentication flow while signed-in visitors reach the personalized Overview greeting.
+- [x] Add focused source coverage for the preserved root route and personalized authenticated Overview greeting.
+- [ ] Save a checkpoint, commit the verified source changes, push the authorized GitHub release, and confirm the Vercel deployment status.

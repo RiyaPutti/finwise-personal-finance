@@ -30,6 +30,30 @@ export function accountBalance(account: Account, transactions: Transaction[]) {
   return deriveAccountBalances([account], transactions).get(account.id) ?? 0;
 }
 
+export interface EmergencyReserveCoverage {
+  held: number;
+  target: number;
+  shortfall: number;
+  percent: number;
+  belowTarget: boolean;
+}
+
+export function emergencyReserveCoverage(accounts: Account[], transactions: Transaction[], settings?: UserSettings | null): EmergencyReserveCoverage {
+  const balances = deriveAccountBalances(accounts, transactions);
+  const held = accounts
+    .filter((account) => !account.is_archived && account.type === "cash_reserve")
+    .reduce((total, account) => total + (balances.get(account.id) ?? 0), 0);
+  const target = Math.max(0, monetary(settings?.emergency_reserve));
+  const shortfall = Math.max(0, target - held);
+  return {
+    held,
+    target,
+    shortfall,
+    percent: target > 0 ? Math.min(100, Math.max(0, (held / target) * 100)) : 0,
+    belowTarget: target > 0 && held < target,
+  };
+}
+
 export function isSpendableAccount(type: AccountType) {
   return !["cash_reserve", "savings", "investment", "credit_card"].includes(type);
 }
@@ -83,6 +107,28 @@ export function monthlyTrend(transactions: Transaction[], months = 6, now = new 
       income: scoped.filter((transaction) => transaction.type === "income").reduce((sum, transaction) => sum + monetary(transaction.amount), 0),
       expense: scoped.filter((transaction) => transaction.type === "expense").reduce((sum, transaction) => sum + monetary(transaction.amount), 0),
     };
+  });
+}
+
+export interface MonthlyReserveTrendPoint {
+  label: string;
+  balance: number;
+}
+
+export function monthlyReserveTrend(accounts: Account[], transactions: Transaction[], months = 6, now = new Date()): MonthlyReserveTrendPoint[] {
+  const reserveAccounts = accounts.filter((account) => !account.is_archived && account.type === "cash_reserve");
+  return Array.from({ length: months }, (_, index) => {
+    const month = subMonths(now, months - index - 1);
+    const cutoff = format(endOfMonth(month), "yyyy-MM-dd");
+    const balance = reserveAccounts.reduce((total, account) => {
+      const openedOn = account.created_at.slice(0, 10);
+      if (openedOn > cutoff) return total;
+      const ledgerBalance = transactions
+        .filter((transaction) => transaction.account_id === account.id && transaction.transaction_date <= cutoff)
+        .reduce((value, transaction) => value + (transaction.type === "income" || transaction.transfer_direction === "in" ? monetary(transaction.amount) : -monetary(transaction.amount)), monetary(account.opening_balance));
+      return total + ledgerBalance;
+    }, 0);
+    return { label: format(month, "MMM"), balance };
   });
 }
 
