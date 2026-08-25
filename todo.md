@@ -119,4 +119,4 @@
 - [x] Add regression coverage, validate the refinements, and commit/push the authorized GitHub release for Vercel deployment.
 - [x] Confirm the root homepage continues routing unauthenticated visitors through the existing authentication flow while signed-in visitors reach the personalized Overview greeting.
 - [x] Add focused source coverage for the preserved root route and personalized authenticated Overview greeting.
-- [ ] Save a checkpoint, commit the verified source changes, push the authorized GitHub release, and confirm the Vercel deployment status.
+- [x] Save a checkpoint, commit the verified source changes, push the authorized GitHub release, and confirm the Vercel deployment status; commit 251bc6a reports a successful Vercel deployment.
