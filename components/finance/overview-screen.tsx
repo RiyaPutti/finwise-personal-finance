@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, Landmark, PiggyBank, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Wallet } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { useFinance } from "./finance-provider";
@@ -9,5 +9,181 @@ import { summaryMetrics, formatMoney, monthlyTrend } from "@/lib/finance/calcula
 import { TrendChart } from "./charts";
 import { TransactionList } from "./transaction-list";
 
-function Metric({ label, value, helper, tone = "neutral", icon: Icon }: { label: string; value: string; helper: string; tone?: "neutral" | "positive" | "warm"; icon: React.ComponentType<{ size?: number }> }) { return <Card className="p-4"><div className="flex items-start justify-between"><p className="text-xs font-medium text-[var(--muted)]">{label}</p><div className={`grid h-8 w-8 place-items-center rounded-xl ${tone === "positive" ? "bg-[var(--positive-soft)] text-[var(--positive)]" : tone === "warm" ? "bg-[var(--danger-soft)] text-[var(--danger)]" : "bg-[var(--raised)] text-[var(--muted)]"}`}><Icon size={16} /></div></div><p className="mt-5 font-mono text-2xl font-medium tracking-tight tabular-nums">{value}</p><p className="mt-1 text-xs text-[var(--muted)]">{helper}</p></Card> }
-export function OverviewScreen() { const { accounts, transactions, settings, loading } = useFinance(); const metrics = summaryMetrics(accounts, transactions, settings); const currency = settings?.currency ?? "USD"; if (loading) return <div className="grid gap-5"><div className="h-8 w-44 animate-pulse rounded bg-[var(--raised)]" /><div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-36 animate-pulse rounded-2xl bg-[var(--raised)]" />)}</div></div>; return <div className="grid gap-7"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-medium uppercase tracking-[.18em] text-lime-300">Overview</p><h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">A clearer view of today.</h1><p className="mt-2 text-sm text-[var(--muted)]">Balances and analytics stay tied to your actual ledger.</p></div><Link href="/app/reports"><Button variant="quiet">View reports</Button></Link></div>{!accounts.length ? <Card><EmptyState title="Start with an account" description="Create the place where your money lives, then record opening balances and transactions." action={<Link href="/app/accounts"><Button>Add your first account</Button></Link>} /></Card> : <><div className="grid grid-cols-2 gap-3 xl:grid-cols-4"><Metric label="Total balance" value={formatMoney(metrics.totalBalance, currency)} helper="Across all active accounts" icon={Landmark} /><Metric label="Safe to spend" value={formatMoney(metrics.safeToSpend, currency)} helper="After reserve and commitments" tone="positive" icon={ShieldCheck} /><Metric label="This month in" value={formatMoney(metrics.income, currency)} helper="Income recorded this month" tone="positive" icon={ArrowDownRight} /><Metric label="This month out" value={formatMoney(metrics.spending, currency)} helper="Actual expenses only" tone="warm" icon={ArrowUpRight} /></div><div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]"><Card className="p-5 sm:p-6"><div className="mb-5 flex items-start justify-between"><div><h2 className="font-display text-lg font-semibold">Income and spending</h2><p className="mt-1 text-xs text-[var(--muted)]">Last six months</p></div><div className="flex gap-3 text-xs text-[var(--muted)]"><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[var(--positive)]" />Income</span><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[var(--danger)]" />Expenses</span></div></div><TrendChart data={monthlyTrend(transactions)} currency={currency} /></Card><div className="grid gap-5"><Card className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs text-[var(--muted)]">Savings & reserves</p><p className="mt-2 font-mono text-2xl font-medium tabular-nums">{formatMoney(metrics.savingsAndReserves, currency)}</p></div><div className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--positive-soft)] text-[var(--positive)]"><PiggyBank size={19} /></div></div><p className="mt-4 text-xs leading-5 text-[var(--muted)]">Dedicated savings, investments, and cash reserves are kept outside normal spending money.</p></Card><Card className="p-5"><div className="flex items-center justify-between"><div><p className="text-xs text-[var(--muted)]">Cash in hand</p><p className="mt-2 font-mono text-2xl font-medium tabular-nums">{formatMoney(metrics.cashInHand, currency)}</p></div><div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-300/10 text-blue-300"><Wallet size={19} /></div></div><p className="mt-4 text-xs leading-5 text-[var(--muted)]">Physical cash spent from a cash wallet is included in total spending and analysable separately.</p></Card></div></div><div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]"><div><div className="mb-3 flex items-center justify-between"><div><h2 className="font-display text-lg font-semibold">Recent activity</h2><p className="mt-1 text-xs text-[var(--muted)]">Your latest ledger entries</p></div><Link className="text-sm font-medium text-lime-300 hover:underline" href="/app/transactions">All transactions</Link></div><TransactionList compact transactions={transactions.slice(0, 10)} /></div><Card className="p-5"><p className="text-xs font-medium uppercase tracking-[.15em] text-[var(--muted)]">Safe-to-spend method</p><p className="mt-3 font-display text-xl font-semibold">Available money, with guardrails.</p><div className="mt-5 grid gap-3 text-sm"><div className="flex justify-between text-[var(--muted)]"><span>Available spending money</span><span className="font-mono text-[var(--ink)]">{formatMoney(metrics.available, currency)}</span></div><div className="flex justify-between text-[var(--muted)]"><span>Emergency reserve</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.emergency_reserve ?? 0, currency)}</span></div><div className="flex justify-between text-[var(--muted)]"><span>Upcoming commitments</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.upcoming_commitments ?? 0, currency)}</span></div><div className="mt-1 flex justify-between border-t border-[var(--line)] pt-3 font-medium"><span>Safe to spend</span><span className="font-mono text-[var(--positive)]">{formatMoney(metrics.safeToSpend, currency)}</span></div></div></Card></div></>}</div>; }
+function Metric({
+  label,
+  value,
+  helper,
+  tone = "neutral",
+  icon: Icon,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  tone?: "neutral" | "positive" | "warm";
+  icon: React.ComponentType<{ size?: number }>;
+  tooltip?: string;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium text-[var(--muted)]">{label}</p>
+          {tooltip ? (
+            <span className="group relative inline-flex">
+              <button
+                type="button"
+                aria-label={`Explain ${label}`}
+                className="rounded text-[var(--muted)] outline-none transition hover:text-[var(--ink)] focus-visible:ring-2 focus-visible:ring-[var(--gold)]"
+              >
+                <CircleHelp size={14} />
+              </button>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-64 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-left text-xs font-normal leading-5 text-[var(--ink)] shadow-xl group-hover:block group-focus-within:block"
+              >
+                {tooltip}
+              </span>
+            </span>
+          ) : null}
+        </div>
+        <div
+          className={`grid h-8 w-8 place-items-center rounded-xl ${
+            tone === "positive"
+              ? "bg-[var(--positive-soft)] text-[var(--positive)]"
+              : tone === "warm"
+                ? "bg-[var(--danger-soft)] text-[var(--danger)]"
+                : "bg-[var(--raised)] text-[var(--muted)]"
+          }`}
+        >
+          <Icon size={16} />
+        </div>
+      </div>
+      <p className="mt-5 font-mono text-2xl font-medium tracking-tight tabular-nums">{value}</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{helper}</p>
+    </Card>
+  );
+}
+
+export function OverviewScreen() {
+  const { accounts, transactions, settings, loading } = useFinance();
+  const metrics = summaryMetrics(accounts, transactions, settings);
+  const currency = settings?.currency ?? "USD";
+  const safeToSpendFormula =
+    "Safe to Spend = max(0, active account balances excluding Cash reserve, Savings, Investments, and Credit cards − Emergency reserve − Upcoming commitments).";
+
+  if (loading) {
+    return (
+      <div className="grid gap-5">
+        <div className="h-8 w-44 animate-pulse rounded bg-[var(--raised)]" />
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-36 animate-pulse rounded-2xl bg-[var(--raised)]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-7">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[.18em] text-lime-300">Overview</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">A clearer view of today.</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">Balances and analytics stay tied to your actual ledger.</p>
+        </div>
+        <Link href="/app/reports"><Button variant="quiet">View reports</Button></Link>
+      </div>
+
+      {!accounts.length ? (
+        <Card>
+          <EmptyState
+            title="Start with an account"
+            description="Create the place where your money lives, then record opening balances and transactions."
+            action={<Link href="/app/accounts"><Button>Add your first account</Button></Link>}
+          />
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <Metric label="Total balance" value={formatMoney(metrics.totalBalance, currency)} helper="Across all active accounts" icon={Landmark} />
+            <Metric
+              label="Safe to spend"
+              value={formatMoney(metrics.safeToSpend, currency)}
+              helper="After reserve and commitments"
+              tone="positive"
+              icon={ShieldCheck}
+              tooltip={safeToSpendFormula}
+            />
+            <Metric label="This month in" value={formatMoney(metrics.income, currency)} helper="Income recorded this month" tone="positive" icon={ArrowDownRight} />
+            <Metric label="This month out" value={formatMoney(metrics.spending, currency)} helper="Actual expenses only" tone="warm" icon={ArrowUpRight} />
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
+            <Card className="p-5 sm:p-6">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-semibold">Income and spending</h2>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Last six months</p>
+                </div>
+                <div className="flex gap-3 text-xs text-[var(--muted)]">
+                  <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[var(--positive)]" />Income</span>
+                  <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[var(--danger)]" />Expenses</span>
+                </div>
+              </div>
+              <TrendChart data={monthlyTrend(transactions)} currency={currency} />
+            </Card>
+
+            <div className="grid gap-5">
+              <Card className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[var(--muted)]">Savings & reserves</p>
+                    <p className="mt-2 font-mono text-2xl font-medium tabular-nums">{formatMoney(metrics.savingsAndReserves, currency)}</p>
+                  </div>
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--positive-soft)] text-[var(--positive)]"><PiggyBank size={19} /></div>
+                </div>
+                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">Dedicated savings, investments, and cash reserves are kept outside normal spending money.</p>
+              </Card>
+              <Card className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[var(--muted)]">Cash in hand</p>
+                    <p className="mt-2 font-mono text-2xl font-medium tabular-nums">{formatMoney(metrics.cashInHand, currency)}</p>
+                  </div>
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-300/10 text-blue-300"><Wallet size={19} /></div>
+                </div>
+                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">Physical cash spent from a cash wallet is included in total spending and analysable separately.</p>
+              </Card>
+            </div>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-semibold">Recent activity</h2>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Your latest ledger entries</p>
+                </div>
+                <Link className="text-sm font-medium text-lime-300 hover:underline" href="/app/transactions">All transactions</Link>
+              </div>
+              <TransactionList compact transactions={transactions.slice(0, 10)} />
+            </div>
+
+            <Card className="p-5">
+              <p className="text-xs font-medium uppercase tracking-[.15em] text-[var(--muted)]">Safe-to-spend method</p>
+              <p className="mt-3 font-display text-xl font-semibold">Available money, with guardrails.</p>
+              <div className="mt-5 grid gap-3 text-sm">
+                <div className="flex justify-between text-[var(--muted)]"><span>Available spending money</span><span className="font-mono text-[var(--ink)]">{formatMoney(metrics.available, currency)}</span></div>
+                <div className="flex justify-between text-[var(--muted)]"><span>Emergency reserve</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.emergency_reserve ?? 0, currency)}</span></div>
+                <div className="flex justify-between text-[var(--muted)]"><span>Upcoming commitments</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.upcoming_commitments ?? 0, currency)}</span></div>
+                <div className="mt-1 flex justify-between border-t border-[var(--line)] pt-3 font-medium"><span>Safe to spend</span><span className="font-mono text-[var(--positive)]">{formatMoney(metrics.safeToSpend, currency)}</span></div>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

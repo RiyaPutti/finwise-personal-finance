@@ -100,4 +100,12 @@
 - [x] Commit and push the approved account-management update to GitHub, then confirm the Vercel auto-deployment; commit 075f34a reports a successful deployment status.
 - [x] Diagnose and correct transfer-history rows that repeat the current account instead of naming the counterparty.
 - [x] Review and test incoming and outgoing transfer labels across the transaction history for clear account-direction semantics.
-- [ ] Commit and push the approved transfer-display correction to GitHub, then verify the Vercel deployment.
+- [x] Commit and push the approved transfer-display correction to GitHub, then verify the Vercel deployment; commit e162b70 has a successful Vercel Deployment has completed status.
+- [x] Diagnose and correct Settings fields that become blank after a successful save and reload.
+- [x] Verify and explain the Safe to Spend treatment of an emergency reserve, correcting it only if the calculation is inconsistent with the product rule.
+- [x] Add regression coverage and validate settings persistence without changing unrelated financial logic.
+- [x] Add a focused Safe to Spend calculation regression test showing emergency reserve and commitments reduce spendable funds and clamp the result at zero.
+- [x] Add an exact Safe to Spend formula tooltip on the Overview page without changing the calculation.
+- [x] Add a visual emergency-reserve coverage indicator beside the Settings reserve field.
+- [x] Add regression coverage and validate the Safe to Spend clarity improvements.
+- [ ] Commit and push the approved Settings clarity update to GitHub, then verify the Vercel deployment.

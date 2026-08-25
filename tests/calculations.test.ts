@@ -27,6 +27,11 @@ describe("financial ledger calculations", () => {
     const metrics = summaryMetrics(accounts, [transaction({ type: "income", amount: 500, transaction_date: "2026-08-05" }), transaction({ type: "expense", amount: 125, transaction_date: "2026-08-06" }), transaction({ type: "transfer", amount: 200, transfer_id: "transfer", transfer_direction: "out", transaction_date: "2026-08-07" })], settings, new Date("2026-08-20"));
     expect(metrics.spending).toBe(125); expect(metrics.income).toBe(500); expect(metrics.safeToSpend).toBe(1025);
   });
+  it("reduces spendable money by emergency reserve and commitments, without going below zero", () => {
+    const settings: UserSettings = { user_id: "user", currency: "INR", emergency_reserve: 1200, upcoming_commitments: 300, theme: "dark", small_purchase_threshold: 100, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
+    expect(summaryMetrics(accounts, [], settings).safeToSpend).toBe(0);
+    expect(summaryMetrics([{ ...accounts[0], opening_balance: 2000 }, accounts[1]], [], settings).safeToSpend).toBe(500);
+  });
   it("calculates budget and savings-goal progress deterministically", () => {
     const budget: Budget = { id: "budget", user_id: "user", category_id: "food", amount: 100, starts_on: "2026-08-01", ends_on: "2026-08-31", budget_watch_warning_percent: null, budget_watch_critical_percent: null };
     expect(budgetProgress(budget, [transaction({ category_id: "food", amount: 120, transaction_date: "2026-08-05" })])).toMatchObject({ spent: 120, remaining: -20, percent: 100 });
