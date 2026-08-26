@@ -150,6 +150,13 @@
 - [x] Add transparent, derived account-role labels that distinguish everyday UPI or online accounts, Cash Wallets, Cash Reserve, and long-term holdings without storing new account metadata.
 - [x] Add a ledger-derived online-versus-cash six-month trend that excludes Cash Reserve and does not create or change financial records.
 - [x] Add regression coverage, complete typecheck, 72 tests, and production build, then push the approved enhancement to GitHub commit fae819f and confirm Vercel deployment success. The connected browser timed out during final authenticated visual review; no production defect was reported by the deployment or automated validation.
-- [ ] Define a ledger-derived monthly online-versus-cash expense split, a transparent preferred everyday-account setting, and a low-online-spendable-money guidance threshold without automatic financial actions.
-- [ ] Implement the account preference, Overview spending split, and contextual online Safe to Spend guidance without altering balances, transaction history, account classification, or reserve rules.
-- [ ] Add regression coverage, validate typechecking/tests/build and responsive behavior, then push the owner-approved release to GitHub and verify Vercel deployment.
+- [x] Define a ledger-derived monthly online-versus-cash expense split, a transparent preferred everyday-account setting, and a low-online-spendable-money guidance threshold without automatic financial actions.
+- [x] Implement the account preference, Overview spending split, and contextual online Safe to Spend guidance without altering balances, transaction history, account classification, or reserve rules.
+- [x] Add regression coverage, validate typechecking, 75 tests, build, and responsive entry layout, then push the owner-approved release to GitHub commit 9d0c59c and verify Vercel deployment success.
+- [x] Define a calmer Overview limited to daily Safe to Spend decisions and identify detailed online-versus-cash analytics to relocate to Spend Analysis.
+- [x] Move the monthly online-versus-cash spending split and online-versus-cash balance trend into Spend Analysis while preserving their ledger-derived calculations and existing navigation.
+- [x] Simplify Overview cards and charts around today’s safe-to-spend, preferred everyday-account, reserve coverage, and concise next action without changing financial data or rules.
+- [x] Add regression coverage and validate typechecking, 76 tests, production build, and responsive signed-out entry layouts before reporting the completed information-architecture refinement.
+- [ ] Define direct Overview month-summary routes into the relevant Spend Analysis filters and a compact end-of-month review prompt that remains informational and dismissible.
+- [ ] Implement the linked month-summary actions and end-of-month review prompt without changing financial records, calculations, or account settings.
+- [ ] Add regression coverage, validate typechecking/tests/build and responsive behavior, then push the owner-approved refinement to GitHub and verify Vercel deployment.

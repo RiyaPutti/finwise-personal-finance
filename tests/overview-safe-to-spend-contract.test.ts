@@ -26,20 +26,21 @@ describe("Overview Safe to Spend explanation contract", () => {
     expect(source).toContain("can evolve with real-user feedback");
   });
 
-  it("shows a distinct ledger-derived online-versus-cash trend without treating reserves as spending money", () => {
-    expect(source).toContain("UPI / online and cash balance");
-    expect(source).toContain("<OnlineCashBalanceChart");
-    expect(source).toContain("Cash Reserve, Savings, Investments, and Credit cards remain excluded");
-    expect(source).toContain("reserve and commitment guardrails stay in today’s Safe to Spend figures");
-  });
-
-  it("keeps the payment split transparent and the preferred everyday account device-private", () => {
-    expect(source).toContain("UPI / online vs cash spending");
-    expect(source).toContain("Expense entries only. A missing payment method stays unclassified");
+  it("keeps the preferred everyday account device-private without turning Overview into a reporting surface", () => {
+    expect(source).not.toContain("UPI / online vs cash spending");
+    expect(source).not.toContain("UPI / online and cash balance");
     expect(source).toContain("Preferred everyday account");
     expect(source).toContain("Saved only on this device");
     expect(source).toContain("does not route payments or change balances");
     expect(source).toContain("This is a planning signal only; it does not move money or block a transaction.");
+  });
+
+  it("links month summaries to the matching Spend Analysis filters and offers a dismissible review cue", () => {
+    expect(source).toContain('/app/spend?period=month&payment=online');
+    expect(source).toContain('/app/spend?period=month&payment=cash');
+    expect(source).toContain("Month-end review is ready");
+    expect(source).toContain("Not now");
+    expect(source).toContain('href="/app/discover"');
   });
 
   it("personalizes the authenticated workspace homepage while retaining a fallback greeting", () => {

@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { CalendarRange, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
 import { Card, EmptyState, Segmented } from "@/components/ui/primitives";
 import { useFinance } from "./finance-provider";
-import { buildInsights, dateRangeForMonth, formatMoney, groupedExpensesByCategory, monthlyTrend, monetary, paymentMethodBreakdown, periodExpenses } from "@/lib/finance/calculations";
+import { buildInsights, dateRangeForMonth, formatMoney, groupedExpensesByCategory, monthlySpendableBalanceTrend, monthlyTrend, monetary, paymentMethodBreakdown, periodExpenses } from "@/lib/finance/calculations";
 import { classifyPaymentMethod } from "@/lib/finance/payment-methods";
-import { CategoryBars, SplitDonut, TrendChart } from "./charts";
+import { CategoryBars, OnlineCashBalanceChart, SplitDonut, TrendChart } from "./charts";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl bg-[var(--raised)] p-3"><p className="text-[11px] text-[var(--muted)]">{label}</p><p className="mt-1 font-mono text-base font-medium tabular-nums">{value}</p></div>;
@@ -16,10 +16,18 @@ function Stat({ label, value }: { label: string; value: string }) {
 const currentRange = () => ({ start: format(startOfMonth(new Date()), "yyyy-MM-dd"), end: format(endOfMonth(new Date()), "yyyy-MM-dd") });
 
 export function SpendAnalysisScreen() {
-  const { transactions, categories, settings } = useFinance();
+  const { accounts, transactions, categories, settings } = useFinance();
   const [paymentView, setPaymentView] = useState<"all" | "online" | "cash">("all");
   const [period, setPeriod] = useState<"today" | "week" | "month" | "year" | "all" | "custom">("month");
   const [range, setRange] = useState(currentRange());
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const requestedPayment = query.get("payment");
+    const requestedPeriod = query.get("period");
+    if (requestedPayment === "all" || requestedPayment === "online" || requestedPayment === "cash") setPaymentView(requestedPayment);
+    if (requestedPeriod === "today" || requestedPeriod === "week" || requestedPeriod === "month" || requestedPeriod === "year" || requestedPeriod === "all" || requestedPeriod === "custom") setPeriod(requestedPeriod);
+  }, []);
   const computedRange = useMemo(() => {
     if (period === "today") return { start: format(new Date(), "yyyy-MM-dd"), end: format(new Date(), "yyyy-MM-dd") };
     if (period === "week") return { start: format(new Date(Date.now() - 6 * 86400000), "yyyy-MM-dd"), end: format(new Date(), "yyyy-MM-dd") };
@@ -34,6 +42,7 @@ export function SpendAnalysisScreen() {
   const paymentTotals = paymentMethodBreakdown(base);
   const largest = expenses.reduce((largest, item) => monetary(item.amount) > monetary(largest?.amount) ? item : largest, expenses[0]);
   const insights = buildInsights(transactions, categories, computedRange.start, computedRange.end, settings?.small_purchase_threshold);
+  const everydayBalanceTrend = monthlySpendableBalanceTrend(accounts, transactions);
   const currency = settings?.currency ?? "USD";
 
   return <div className="grid gap-7">
@@ -46,10 +55,11 @@ export function SpendAnalysisScreen() {
     {!expenses.length ? <Card><EmptyState title="No spending in this period" description="When you record expenses, this view will show patterns without inventing any data." /></Card> : <>
       <div data-finwise-motion="analysis-chart-collection" className="finwise-stagger grid gap-5 xl:grid-cols-2">
         <Card className="p-5 sm:p-6"><h2 className="font-display text-lg font-semibold">Spending by category</h2><p className="mt-1 text-xs text-[var(--muted)]">Which categories account for the most?</p><div className="mt-5"><CategoryBars data={categoryData} currency={currency} /></div></Card>
-        <Card className="p-5 sm:p-6"><h2 className="font-display text-lg font-semibold">Cash versus online</h2><p className="mt-1 text-xs text-[var(--muted)]">Unknown methods are kept separate and are not counted as online.</p><SplitDonut data={[{ name: "Cash", value: paymentTotals.cash }, { name: "Online", value: paymentTotals.online }]} currency={currency} /><div className="grid grid-cols-3 gap-3 text-center text-xs"><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">Cash</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.cash, currency)}</p></div><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">Online</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.online, currency)}</p></div><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">Unknown</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.unknown, currency)}</p></div></div></Card>
+        <Card className="p-5 sm:p-6"><h2 className="font-display text-lg font-semibold">UPI / online vs cash spending</h2><p className="mt-1 text-xs text-[var(--muted)]">Expense entries only. Unknown methods are kept separate and are never counted as online.</p><SplitDonut data={[{ name: "Cash", value: paymentTotals.cash }, { name: "UPI / online", value: paymentTotals.online }]} currency={currency} /><div className="grid grid-cols-3 gap-3 text-center text-xs"><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">Cash</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.cash, currency)}</p></div><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">UPI / online</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.online, currency)}</p></div><div className="rounded-xl bg-[var(--raised)] p-2"><p className="text-[var(--muted)]">Unknown</p><p className="mt-1 font-mono text-[var(--ink)]">{formatMoney(paymentTotals.unknown, currency)}</p></div></div></Card>
       </div>
       <Card className="p-5 sm:p-6"><div className="flex items-center gap-2"><Lightbulb size={17} className="text-lime-300" /><h2 className="font-display text-lg font-semibold">What the numbers say</h2></div><div data-finwise-motion="analysis-insight-collection" className="finwise-stagger mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{insights.map((insight) => <div key={insight} className="rounded-xl border border-[var(--line)] bg-[var(--raised)]/45 p-3 text-sm leading-6 text-[var(--muted)]">{insight}</div>)}</div></Card>
     </>}
+    <Card className="p-5 sm:p-6"><div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-display text-lg font-semibold">UPI / online and cash balance</h2><p className="mt-1 text-xs text-[var(--muted)]">Month-end balance from active everyday accounts · last six months</p></div><div className="flex gap-3 text-xs text-[var(--muted)]"><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#C6A15A]" />UPI / online</span><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#98ABB8]" />Cash Wallet</span></div></div><OnlineCashBalanceChart data={everydayBalanceTrend} currency={currency} /><p className="mt-3 text-xs leading-5 text-[var(--muted)]">This view replays opening balances and recorded ledger activity for Bank, Other, and Cash Wallet accounts. Cash Reserve, Savings, Investments, and Credit cards remain excluded; reserve and commitment guardrails stay in today’s Safe to Spend figures.</p></Card>
   </div>;
 }
 

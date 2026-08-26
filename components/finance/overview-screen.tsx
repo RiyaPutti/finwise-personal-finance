@@ -6,9 +6,9 @@ import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, Pigg
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { useFinance } from "./finance-provider";
-import { emergencyReserveCoverage, formatMoney, monthlyPaymentSpendSplit, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyTrend, onlineSafeToSpendGuidance, summaryMetrics } from "@/lib/finance/calculations";
+import { emergencyReserveCoverage, formatMoney, isEndOfMonthReviewWindow, monthlyReserveTrend, monthlyTrend, onlineSafeToSpendGuidance, summaryMetrics } from "@/lib/finance/calculations";
 import { isEligibleEverydayAccount, readPreferredEverydayAccountId, writePreferredEverydayAccountId } from "@/lib/finance/everyday-account";
-import { OnlineCashBalanceChart, ReserveProgressChart, SplitDonut, TrendChart } from "./charts";
+import { ReserveProgressChart, TrendChart } from "./charts";
 import { TransactionList } from "./transaction-list";
 
 function Metric({
@@ -70,20 +70,14 @@ function Metric({
 export function OverviewScreen() {
   const { accounts, profile, transactions, settings, loading } = useFinance();
   const [preferredEverydayAccountId, setPreferredEverydayAccountId] = useState("");
+  const [monthEndReviewDismissed, setMonthEndReviewDismissed] = useState(true);
   const metrics = summaryMetrics(accounts, transactions, settings);
-  const paymentSplit = monthlyPaymentSpendSplit(transactions);
   const onlineGuidance = onlineSafeToSpendGuidance(metrics.onlineAvailable, metrics.onlineSafeToSpend, settings);
   const reserveCoverage = emergencyReserveCoverage(accounts, transactions, settings);
   const reserveTrend = monthlyReserveTrend(accounts, transactions);
-  const spendableBalanceTrend = monthlySpendableBalanceTrend(accounts, transactions);
   const hasReserveAccount = accounts.some((account) => !account.is_archived && account.type === "cash_reserve");
   const everydayAccounts = accounts.filter(isEligibleEverydayAccount);
   const preferredEverydayAccount = everydayAccounts.find((account) => account.id === preferredEverydayAccountId) ?? null;
-  const paymentSplitData = [
-    { name: "UPI / online", value: paymentSplit.online },
-    { name: "Cash", value: paymentSplit.cash },
-    { name: "Unspecified", value: paymentSplit.unknown },
-  ].filter((item) => item.value > 0);
   const currency = settings?.currency ?? "USD";
   const firstName = profile?.display_name?.trim().split(/\s+/)[0] || null;
   const onlineSafeToSpendFormula =
@@ -97,6 +91,17 @@ export function OverviewScreen() {
     window.addEventListener("finwise:preferred-everyday-account-change", sync);
     return () => window.removeEventListener("finwise:preferred-everyday-account-change", sync);
   }, []);
+
+  useEffect(() => {
+    const key = `finwise:month-end-review:${new Date().toISOString().slice(0, 7)}`;
+    setMonthEndReviewDismissed(window.localStorage.getItem(key) === "dismissed");
+  }, []);
+
+  const dismissMonthEndReview = () => {
+    const key = `finwise:month-end-review:${new Date().toISOString().slice(0, 7)}`;
+    window.localStorage.setItem(key, "dismissed");
+    setMonthEndReviewDismissed(true);
+  };
 
   if (loading) {
     return (
@@ -177,6 +182,31 @@ export function OverviewScreen() {
             <Metric label="This month out" value={formatMoney(metrics.spending, currency)} helper="Actual expenses only" tone="warm" icon={ArrowUpRight} />
           </div>
 
+          <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">This month’s spending</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Explore the same ledger expenses by payment method in Spend Analysis.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/app/spend?period=month&payment=all"><Button variant="quiet" size="sm">All expenses</Button></Link>
+              <Link href="/app/spend?period=month&payment=online"><Button variant="quiet" size="sm">UPI / online</Button></Link>
+              <Link href="/app/spend?period=month&payment=cash"><Button variant="quiet" size="sm">Cash</Button></Link>
+            </div>
+          </Card>
+
+          {isEndOfMonthReviewWindow() && !monthEndReviewDismissed ? (
+            <Card className="flex flex-col gap-3 border-[var(--gold)]/30 bg-[var(--gold)]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">Month-end review is ready</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Take a short, ledger-based look at this month before the next one begins. It does not change any money or settings.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={dismissMonthEndReview} className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)] focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gold)]">Not now</button>
+                <Link href="/app/discover"><Button size="sm">Open review</Button></Link>
+              </div>
+            </Card>
+          ) : null}
+
           <div className="grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
             <Card className="p-5 sm:p-6">
               <div className="mb-5 flex items-start justify-between">
@@ -215,37 +245,6 @@ export function OverviewScreen() {
               </Card>
             </div>
           </div>
-
-          <Card className="p-5 sm:p-6">
-            <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[.16em] text-[var(--accent)]">This month</p>
-                <h2 className="mt-2 font-display text-lg font-semibold">UPI / online vs cash spending</h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Expense entries only. A missing payment method stays unclassified and is never counted as online.</p>
-                <div className="mt-5 grid gap-2 text-sm">
-                  <div className="flex justify-between"><span className="text-[var(--muted)]">UPI / online</span><span className="font-mono">{formatMoney(paymentSplit.online, currency)}</span></div>
-                  <div className="flex justify-between"><span className="text-[var(--muted)]">Cash</span><span className="font-mono">{formatMoney(paymentSplit.cash, currency)}</span></div>
-                  {paymentSplit.unknown > 0 ? <div className="flex justify-between"><span className="text-[var(--muted)]">Unspecified</span><span className="font-mono">{formatMoney(paymentSplit.unknown, currency)}</span></div> : null}
-                </div>
-              </div>
-              <SplitDonut data={paymentSplitData} currency={currency} />
-            </div>
-          </Card>
-
-          <Card className="p-5 sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold">UPI / online and cash balance</h2>
-                <p className="mt-1 text-xs text-[var(--muted)]">Month-end balance from active everyday accounts · last six months</p>
-              </div>
-              <div className="flex gap-3 text-xs text-[var(--muted)]">
-                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#C6A15A]" />UPI / online</span>
-                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#98ABB8]" />Cash Wallet</span>
-              </div>
-            </div>
-            <OnlineCashBalanceChart data={spendableBalanceTrend} currency={currency} />
-            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">This view replays opening balances and recorded ledger activity for Bank, Other, and Cash Wallet accounts. Cash Reserve, Savings, Investments, and Credit cards remain excluded; reserve and commitment guardrails stay in today’s Safe to Spend figures.</p>
-          </Card>
 
           <Card className="p-5 sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

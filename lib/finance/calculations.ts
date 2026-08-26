@@ -554,6 +554,12 @@ export function monthlyReview(transactions: Transaction[], categories: Category[
   return { ...pulse, ...map, direction, savingsRate: pulse.currentIncome > 0 ? Math.max(-100, ((pulse.currentIncome - pulse.currentSpending) / pulse.currentIncome) * 100) : null };
 }
 
+export function isEndOfMonthReviewWindow(now = new Date(), days = 5) {
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const safeDays = Math.min(7, Math.max(1, Math.floor(days)));
+  return now.getDate() >= lastDay - safeDays + 1;
+}
+
 export function financialWeather(accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, now = new Date()) {
   const metrics = summaryMetrics(accounts, transactions, settings, now);
   const runway = billRunway(transactions, 30, now);
