@@ -2,13 +2,13 @@
 
 import Papa from "papaparse";
 import { createClient } from "@/lib/supabase/client";
-import type { Account, Budget, Category, FinanceSnapshot, GoalContribution, SavingsGoal, Transaction, TransactionInput, UserSettings } from "./types";
+import type { Account, Budget, Category, FinanceSnapshot, GoalContribution, Receipt, RecurringBill, SavingsGoal, Transaction, TransactionInput, UserSettings } from "./types";
 import { parseBackup } from "./import";
 import { DEFAULT_WORKSPACE_CURRENCY } from "./currency";
 
 export const defaultWorkspaceSettings: UserSettings = { user_id: "", currency: DEFAULT_WORKSPACE_CURRENCY, emergency_reserve: 0, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 100, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
 const defaultSettings = defaultWorkspaceSettings;
-const emptySnapshot: FinanceSnapshot = { profile: null, settings: defaultSettings, accounts: [], categories: [], transactions: [], budgets: [], goals: [], contributions: [] };
+const emptySnapshot: FinanceSnapshot = { profile: null, settings: defaultSettings, accounts: [], categories: [], transactions: [], budgets: [], goals: [], contributions: [], recurringBills: [], receipts: [] };
 const normalize = <T extends Record<string, unknown>>(record: T): T => {
   const numeric = ["amount", "opening_balance", "target_amount", "emergency_reserve", "upcoming_commitments", "small_purchase_threshold", "budget_watch_warning_percent", "budget_watch_critical_percent"];
   return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, numeric.includes(key) ? (value === null ? null : Number(value ?? 0)) : value])) as T;
@@ -34,15 +34,20 @@ async function querySnapshot(): Promise<FinanceSnapshot> {
     supabase.from("budgets").select("*").order("starts_on", { ascending: false }),
     supabase.from("savings_goals").select("*").order("created_at", { ascending: false }),
     supabase.from("goal_contributions").select("*").order("contribution_date", { ascending: false }),
+    supabase.from("recurring_bills").select("*").order("next_due_date", { ascending: true }),
+    supabase.from("receipts").select("*").order("created_at", { ascending: false }),
   ]);
-  const error = results.map((result) => result.error).find(Boolean);
+  const error = results.slice(0, 8).map((result) => result.error).find(Boolean);
   if (error) throw error;
+  const optionalError = results.slice(8).map((result) => result.error).find((queryError) => queryError && !["42P01", "PGRST205"].includes(queryError.code ?? ""));
+  if (optionalError) throw optionalError;
   return {
     profile: results[0].data ? normalize(results[0].data) : null,
     settings: results[1].data ? normalize(results[1].data) as UserSettings : defaultSettings,
     accounts: (results[2].data ?? []).map(normalize) as Account[], categories: (results[3].data ?? []).map(normalize) as Category[],
     transactions: (results[4].data ?? []).map(normalize) as Transaction[], budgets: (results[5].data ?? []).map(normalize) as Budget[],
     goals: (results[6].data ?? []).map(normalize) as SavingsGoal[], contributions: (results[7].data ?? []).map(normalize) as GoalContribution[],
+    recurringBills: (results[8].data ?? []).map(normalize) as RecurringBill[], receipts: (results[9].data ?? []).map(normalize) as Receipt[],
   };
 }
 
@@ -87,6 +92,9 @@ export const financeStore = {
   async contributeToGoal(goal_id: string, amount: number, note?: string) {
     await mutate("goal.contribute", { goal_id, amount, note });
   },
+  async saveRecurringBill(input: Omit<RecurringBill, "id" | "user_id" | "created_at" | "updated_at">, id?: string) { await mutate("recurringBill.save", { input, id }); },
+  async deleteRecurringBill(id: string) { await mutate("recurringBill.delete", { id }); },
+  async deleteReceipt(id: string) { await mutate("receipt.delete", { id }); },
   async updateSettings(input: Partial<UserSettings>) {
     await mutate("settings.update", { input });
   },

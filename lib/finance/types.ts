@@ -28,6 +28,15 @@ export interface Transaction {
   notes: string | null; is_recurring: boolean; recurrence_interval: "weekly" | "monthly" | "yearly" | null;
   next_due_date: string | null; created_at: string;
 }
+export interface RecurringBill {
+  id: string; user_id: string; account_id: string; category_id: string | null; name: string; amount: number;
+  cadence: "weekly" | "monthly" | "yearly"; next_due_date: string; payment_method: PaymentMethod | null;
+  notes: string | null; is_active: boolean; created_at: string; updated_at: string;
+}
+export interface Receipt {
+  id: string; user_id: string; transaction_id: string | null; storage_path: string; file_name: string;
+  mime_type: "image/jpeg" | "image/png" | "image/webp"; size_bytes: number; created_at: string;
+}
 export interface Budget {
   id: string; user_id: string; category_id: string; amount: number; starts_on: string; ends_on: string;
   budget_watch_warning_percent: number | null; budget_watch_critical_percent: number | null;
@@ -43,11 +52,12 @@ export interface GoalContribution {
 export interface FinanceSnapshot {
   profile: Profile | null; settings: UserSettings | null; accounts: Account[]; categories: Category[];
   transactions: Transaction[]; budgets: Budget[]; goals: SavingsGoal[]; contributions: GoalContribution[];
+  recurringBills: RecurringBill[]; receipts: Receipt[];
 }
 
 export interface TransactionInput {
   account_id: string; category_id?: string | null; type: Exclude<TransactionType, "transfer">; amount: number;
   description: string; transaction_date: string; payment_method?: PaymentMethod | null;
   need_want?: NeedWantType | null; notes?: string | null; is_recurring?: boolean;
-  recurrence_interval?: "weekly" | "monthly" | "yearly" | null; next_due_date?: string | null;
+  recurrence_interval?: "weekly" | "monthly" | "yearly" | null; next_due_date?: string | null; receipt_id?: string | null;
 }

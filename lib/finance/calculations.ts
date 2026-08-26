@@ -1,5 +1,5 @@
 import { addDays, addMonths, addYears, differenceInCalendarDays, endOfMonth, format, isAfter, isBefore, isWithinInterval, parseISO, startOfMonth, subMonths } from "date-fns";
-import type { Account, AccountType, Budget, Category, GoalContribution, SavingsGoal, Transaction, UserSettings } from "./types";
+import type { Account, AccountType, Budget, Category, GoalContribution, RecurringBill, SavingsGoal, Transaction, UserSettings } from "./types";
 import { classifyPaymentMethod } from "./payment-methods";
 import { DEFAULT_WORKSPACE_CURRENCY } from "./currency";
 
@@ -196,7 +196,80 @@ function nextRecurrence(date: Date, interval: Transaction["recurrence_interval"]
   return addMonths(date, 1);
 }
 
-export function cashFlowForecast(accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, horizonDays = 30, now = new Date()) {
+export interface RecurringOccurrence {
+  sourceTransactionId: string;
+  accountId: string;
+  categoryId: string | null;
+  type: "income" | "expense";
+  amount: number;
+  description: string;
+  dueDate: string;
+  recurrenceInterval: NonNullable<Transaction["recurrence_interval"]>;
+}
+
+/** Returns only user-recorded recurring transaction occurrences; it never creates ledger rows. */
+export function recurringOccurrences(transactions: Transaction[], start: string, end: string): RecurringOccurrence[] {
+  const lower = parseISO(start);
+  const upper = parseISO(end);
+  return transactions
+    .filter((transaction) => transaction.is_recurring && transaction.next_due_date && transaction.type !== "transfer" && transaction.recurrence_interval)
+    .flatMap((transaction) => {
+      const recurrenceInterval = transaction.recurrence_interval;
+      const nextDueDate = transaction.next_due_date;
+      if (transaction.type === "transfer" || !recurrenceInterval || !nextDueDate) return [];
+      let due = parseISO(nextDueDate);
+      let attempts = 0;
+      while (isBefore(due, lower) && attempts < 730) { due = nextRecurrence(due, recurrenceInterval); attempts += 1; }
+      const occurrences: RecurringOccurrence[] = [];
+      while (!isAfter(due, upper) && attempts < 800) {
+        occurrences.push({ sourceTransactionId: transaction.id, accountId: transaction.account_id, categoryId: transaction.category_id, type: transaction.type, amount: monetary(transaction.amount), description: transaction.description, dueDate: format(due, "yyyy-MM-dd"), recurrenceInterval });
+        due = nextRecurrence(due, recurrenceInterval);
+        attempts += 1;
+      }
+      return occurrences;
+    })
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.description.localeCompare(b.description));
+}
+
+/** Returns planning-only occurrences from explicit bill plans; it never creates ledger rows. */
+export function recurringBillOccurrences(bills: RecurringBill[], start: string, end: string): RecurringOccurrence[] {
+  const lower = parseISO(start);
+  const upper = parseISO(end);
+  return bills
+    .filter((bill) => bill.is_active)
+    .flatMap((bill) => {
+      let due = parseISO(bill.next_due_date);
+      let attempts = 0;
+      while (isBefore(due, lower) && attempts < 730) { due = nextRecurrence(due, bill.cadence); attempts += 1; }
+      const occurrences: RecurringOccurrence[] = [];
+      while (!isAfter(due, upper) && attempts < 800) {
+        occurrences.push({ sourceTransactionId: `bill:${bill.id}`, accountId: bill.account_id, categoryId: bill.category_id, type: "expense", amount: monetary(bill.amount), description: bill.name, dueDate: format(due, "yyyy-MM-dd"), recurrenceInterval: bill.cadence });
+        due = nextRecurrence(due, bill.cadence);
+        attempts += 1;
+      }
+      return occurrences;
+    })
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.description.localeCompare(b.description));
+}
+
+export function billRunway(transactions: Transaction[], horizonDays = 30, now = new Date(), recurringBills: RecurringBill[] = []) {
+  const start = format(now, "yyyy-MM-dd");
+  const end = format(addDays(parseISO(start), Math.max(0, horizonDays - 1)), "yyyy-MM-dd");
+  const items = [...recurringOccurrences(transactions, start, end), ...recurringBillOccurrences(recurringBills, start, end)].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.description.localeCompare(b.description));
+  const bills = items.filter((item) => item.type === "expense");
+  const income = items.filter((item) => item.type === "income");
+  return {
+    start,
+    end,
+    items,
+    bills,
+    income,
+    billTotal: bills.reduce((total, item) => total + item.amount, 0),
+    incomeTotal: income.reduce((total, item) => total + item.amount, 0),
+  };
+}
+
+export function cashFlowForecast(accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, horizonDays = 30, now = new Date(), recurringBills: RecurringBill[] = []) {
   const start = parseISO(format(now, "yyyy-MM-dd"));
   const end = addDays(start, Math.max(0, horizonDays - 1));
   const metrics = summaryMetrics(accounts, transactions, settings, now);
@@ -219,6 +292,12 @@ export function cashFlowForecast(accounts: Account[], transactions: Transaction[
       due = nextRecurrence(due, transaction.recurrence_interval);
       attempts += 1;
     }
+  });
+  recurringBillOccurrences(recurringBills, format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd")).forEach((bill) => {
+    const day = daily.find((entry) => entry.date === bill.dueDate);
+    if (!day) return;
+    day.expense += bill.amount;
+    day.recurringCount += 1;
   });
 
   let projected = metrics.safeToSpend;
@@ -303,4 +382,126 @@ export function filterByDateRange<T extends { transaction_date?: string; contrib
     const date = record.transaction_date ?? record.contribution_date;
     return Boolean(date && isWithinInterval(parseISO(date), { start: parseISO(start), end: parseISO(end) }));
   });
+}
+
+export function netWorthTrend(accounts: Account[], transactions: Transaction[], months = 12, now = new Date()) {
+  const active = accounts.filter((account) => !account.is_archived);
+  return Array.from({ length: months }, (_, index) => {
+    const month = subMonths(now, months - index - 1);
+    const cutoff = format(endOfMonth(month), "yyyy-MM-dd");
+    const balances = new Map(active.map((account) => [account.id, account.created_at.slice(0, 10) > cutoff ? 0 : monetary(account.opening_balance)]));
+    transactions.filter((transaction) => transaction.transaction_date <= cutoff).forEach((transaction) => {
+      if (!balances.has(transaction.account_id)) return;
+      const delta = transaction.type === "income" || transaction.transfer_direction === "in" ? monetary(transaction.amount) : -monetary(transaction.amount);
+      balances.set(transaction.account_id, (balances.get(transaction.account_id) ?? 0) + delta);
+    });
+    const values = active.map((account) => ({ account, balance: balances.get(account.id) ?? 0 }));
+    const assets = values.filter(({ account }) => account.type !== "credit_card").reduce((total, item) => total + item.balance, 0);
+    const liabilities = values.filter(({ account }) => account.type === "credit_card").reduce((total, item) => total + Math.abs(Math.min(0, item.balance)), 0);
+    return { label: format(month, "MMM"), assets, liabilities, netWorth: assets - liabilities };
+  });
+}
+
+export interface DebtPayoffPathItem {
+  accountId: string;
+  accountName: string;
+  balance: number;
+  recordedRepaymentsThisMonth: number;
+}
+
+export function debtPayoffPath(accounts: Account[], transactions: Transaction[], now = new Date()): DebtPayoffPathItem[] {
+  const balances = deriveAccountBalances(accounts, transactions);
+  const month = dateRangeForMonth(now);
+  return accounts
+    .filter((account) => !account.is_archived && account.type === "credit_card")
+    .map((account) => ({
+      accountId: account.id,
+      accountName: account.name,
+      balance: Math.abs(Math.min(0, balances.get(account.id) ?? 0)),
+      recordedRepaymentsThisMonth: transactions
+        .filter((transaction) => transaction.account_id === account.id && transaction.transfer_direction === "in" && transaction.transaction_date >= month.start && transaction.transaction_date <= month.end)
+        .reduce((total, transaction) => total + monetary(transaction.amount), 0),
+    }))
+    .filter((item) => item.balance > 0 || item.recordedRepaymentsThisMonth > 0)
+    .sort((left, right) => right.balance - left.balance);
+}
+
+export function moneyMap(transactions: Transaction[], categories: Category[], now = new Date()) {
+  const range = dateRangeForMonth(now);
+  const scoped = transactions.filter((transaction) => transaction.transaction_date >= range.start && transaction.transaction_date <= range.end);
+  const income = scoped.filter((transaction) => transaction.type === "income").reduce((total, item) => total + monetary(item.amount), 0);
+  const expenses = scoped.filter((transaction) => transaction.type === "expense").reduce((total, item) => total + monetary(item.amount), 0);
+  const categoryMap = new Map(categories.map((category) => [category.id, category.name]));
+  const essential = scoped.filter((transaction) => transaction.type === "expense" && transaction.need_want === "need").reduce((total, item) => total + monetary(item.amount), 0);
+  const flexible = expenses - essential;
+  const top = groupedExpensesByCategory(scoped.filter((item) => item.type === "expense"), categories).slice(0, 3);
+  return { income, expenses, essential, flexible, net: income - expenses, top, categoryMap };
+}
+
+export function spendingRhythm(transactions: Transaction[], now = new Date()) {
+  const start = format(startOfMonth(subMonths(now, 2)), "yyyy-MM-dd");
+  const byWeek = [0, 0, 0, 0, 0];
+  transactions.filter((transaction) => transaction.type === "expense" && transaction.transaction_date >= start).forEach((transaction) => {
+    const day = parseISO(transaction.transaction_date).getDate();
+    const week = Math.min(4, Math.floor((day - 1) / 7));
+    byWeek[week] += monetary(transaction.amount);
+  });
+  const labels = ["Days 1–7", "Days 8–14", "Days 15–21", "Days 22–28", "Month end"];
+  return labels.map((label, index) => ({ label, value: byWeek[index] / 3 }));
+}
+
+export function annualExpenseRhythm(transactions: Transaction[], now = new Date()) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = subMonths(now, 11 - index);
+    const range = dateRangeForMonth(month);
+    const expense = periodExpenses(transactions, range.start, range.end).reduce((total, item) => total + monetary(item.amount), 0);
+    return { label: format(month, "MMM"), expense };
+  });
+}
+
+export function leakSignals(transactions: Transaction[], now = new Date()) {
+  const cutoff = format(subMonths(now, 3), "yyyy-MM-dd");
+  const grouped = new Map<string, Transaction[]>();
+  transactions.filter((transaction) => transaction.type === "expense" && transaction.transaction_date >= cutoff && transaction.description.trim()).forEach((transaction) => {
+    const key = transaction.description.trim().toLowerCase();
+    grouped.set(key, [...(grouped.get(key) ?? []), transaction]);
+  });
+  return [...grouped.entries()].map(([description, records]) => ({ description, records, total: records.reduce((sum, record) => sum + monetary(record.amount), 0), average: records.reduce((sum, record) => sum + monetary(record.amount), 0) / records.length })).filter((signal) => signal.records.length >= 3).sort((a, b) => b.total - a.total).slice(0, 4);
+}
+
+export function monthlyReview(transactions: Transaction[], categories: Category[], now = new Date()) {
+  const pulse = financialPulse([], transactions, categories, null, now);
+  const map = moneyMap(transactions, categories, now);
+  const direction = pulse.spendingChange > 0 ? "higher" : pulse.spendingChange < 0 ? "lower" : "steady";
+  return { ...pulse, ...map, direction, savingsRate: pulse.currentIncome > 0 ? Math.max(-100, ((pulse.currentIncome - pulse.currentSpending) / pulse.currentIncome) * 100) : null };
+}
+
+export function financialWeather(accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, now = new Date()) {
+  const metrics = summaryMetrics(accounts, transactions, settings, now);
+  const runway = billRunway(transactions, 30, now);
+  const reserve = emergencyReserveCoverage(accounts, transactions, settings);
+  const afterBills = metrics.safeToSpend + runway.incomeTotal - runway.billTotal;
+  if (afterBills < 0 || metrics.safeToSpend <= 0) return { state: "tight" as const, label: "Tight", message: "Upcoming recorded bills leave little flexible room. Keep optional spending deliberate." };
+  if (reserve.belowTarget || afterBills < metrics.safeToSpend * 0.4) return { state: "watchful" as const, label: "Watchful", message: "Your plan is workable, but reserve coverage or near-term bills deserve attention." };
+  return { state: "clear" as const, label: "Clear", message: "Your current ledger, reserve guardrail, and recorded bill runway are in a calm position." };
+}
+
+export function decisionSimulator(amount: number, accounts: Account[], transactions: Transaction[], settings: UserSettings | null | undefined, now = new Date()) {
+  const cost = Math.max(0, monetary(amount));
+  const metrics = summaryMetrics(accounts, transactions, settings, now);
+  const runway = billRunway(transactions, 30, now);
+  const afterPurchase = metrics.safeToSpend - cost;
+  const afterBills = afterPurchase + runway.incomeTotal - runway.billTotal;
+  const state = afterPurchase < 0 ? "pause" : afterBills < 0 ? "watch" : "comfortable";
+  return { cost, safeToSpend: metrics.safeToSpend, afterPurchase, afterBills, state, upcomingBills: runway.billTotal, expectedIncome: runway.incomeTotal };
+}
+
+export function quietWins(accounts: Account[], transactions: Transaction[], categories: Category[], settings: UserSettings | null | undefined, now = new Date()) {
+  const pulse = financialPulse(accounts, transactions, categories, settings, now);
+  const reserve = emergencyReserveCoverage(accounts, transactions, settings);
+  const wins: string[] = [];
+  if (pulse.spendingChange < 0) wins.push(`Spending is ${formatMoney(Math.abs(pulse.spendingChange))} lower than last month so far.`);
+  if (reserve.target > 0 && !reserve.belowTarget) wins.push("Your Cash reserve has reached its chosen target.");
+  if (pulse.currentIncome > pulse.currentSpending && pulse.currentIncome > 0) wins.push("This month’s recorded income is currently ahead of recorded spending.");
+  return wins;
 }

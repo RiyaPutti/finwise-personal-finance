@@ -113,6 +113,18 @@
 - [x] Add a clear dashboard warning when reserve coverage falls below the user-defined emergency reserve target.
 - [x] Add regression coverage and validate reserve trend and warning behavior without changing Safe to Spend calculations.
 - [x] Add a clear reserve-target-achieved success state on Overview without changing financial calculations.
+- [x] Audit the existing Supabase finance schema, frontend data flow, and calculation helpers before adding the confirmed proactive Finwise feature suite.
+- [x] Add secure user-managed recurring-bill records with a bill-runway view and deterministic cash-flow calendar; do not add background notifications or scheduled jobs.
+- [x] Complete transaction search coverage and add a reviewable receipt-to-transaction drafting flow with secure per-user receipt storage.
+- [x] Add explicit device-private category rules that users create, review, and remove themselves; rules may prefill a category but never save or recategorise a transaction automatically.
+- [x] Link savings goals to eligible accounts, retain explicit manual earmarks, and add reserve milestones plus a money-flow view without changing ledger balances.
+- [x] Add an explainable monthly review, net-worth history, spending rhythm, annual-expense planning, and private financial context notes.
+- [x] Add a ledger-derived debt payoff path for liability accounts without estimating interest, changing balances, or making payoff recommendations automatically.
+- [x] Add Financial Weather, a review-before-save Decision Simulator, true-cost context, and a What Changed drill-down without making automatic financial decisions.
+- [x] Add gentle spending pacing, quiet-win insights, subscription/leak signals, and optional no-spend boundaries without fake customer data or external notifications.
+- [x] Add regression coverage, accessible responsive UI, source/audit checks, typecheck, full tests, and production build; checkpoint only for the user’s local review before any deployment.
+- [x] Add explicit source-contract coverage for transaction search input, filtered-result handling, empty state, and coexistence with category-rule and receipt-draft controls.
+- [x] Save a fresh checkpoint containing the validated proactive-finance changes before presenting local review.
 - [x] Add a direct Overview link to edit the emergency reserve target in Settings.
 - [x] Add a concise reserve-chart guidance state that supports real-user feedback refinement.
 - [x] Personalize the authenticated homepage greeting with the signed-in user’s name while preserving the existing anonymous landing experience.
@@ -120,3 +132,8 @@
 - [x] Confirm the root homepage continues routing unauthenticated visitors through the existing authentication flow while signed-in visitors reach the personalized Overview greeting.
 - [x] Add focused source coverage for the preserved root route and personalized authenticated Overview greeting.
 - [x] Save a checkpoint, commit the verified source changes, push the authorized GitHub release, and confirm the Vercel deployment status; commit 251bc6a reports a successful Vercel deployment.
+- [ ] Apply and verify the additive proactive-finance Supabase migration for private recurring bills, receipt metadata, storage bucket policies, and RLS.
+- [ ] Use a credential-safe alternate migration path because the Supabase SQL Editor rejects non-empty queries, then verify the exact additive schema objects.
+- [ ] Perform authenticated live end-to-end testing of Plan, Discover, search/rules, private receipt drafting, and legacy financial workflows using the owner-provided account.
+- [ ] Commit and push the owner-approved proactive-finance release to GitHub, then confirm the resulting Vercel deployment is successful.
+- [ ] Verify Plan, Discover, search/rules, private receipt drafting, and legacy workflows on the authenticated production site after Vercel deploys the approved new source.

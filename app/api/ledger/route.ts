@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { accountSchema, budgetSchema, goalSchema, transactionSchema, transferSchema } from "@/lib/finance/validation";
+import { accountSchema, budgetSchema, goalSchema, recurringBillSchema, transactionSchema, transferSchema } from "@/lib/finance/validation";
 import { parseBackup, restoreRows } from "@/lib/finance/import";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { supabase, user } = await getSession();
     const action = parsed.action;
     const data = parsed.data as Record<string, unknown>;
-    let result: { error: { message: string } | null };
+    let result: any;
 
     switch (action) {
       case "account.save": {
@@ -56,13 +56,20 @@ export async function POST(request: NextRequest) {
         break;
       }
       case "transaction.save": {
-        const input = transactionSchema.parse(data.input);
+        const parsedInput = transactionSchema.parse(data.input);
+        const { receipt_id, ...input } = parsedInput;
         const { data: account, error: accountError } = await supabase.from("accounts").select("type").eq("id", input.account_id).single();
         if (accountError || !account) throw new Error("Choose an active account that belongs to you.");
         if (input.type === "expense" && account.type !== "cash" && !input.payment_method) throw new Error("Select the payment method used for this non-cash account.");
         if (input.type === "expense" && account.type === "cash") input.payment_method = "cash";
         const recordId = data.id ? id.parse(data.id) : null;
-        result = recordId ? await supabase.from("transactions").update(input).eq("id", recordId) : await supabase.from("transactions").insert({ ...input, user_id: user.id });
+        const saved = recordId ? await supabase.from("transactions").update(input).eq("id", recordId).eq("user_id", user.id).select("id").single() : await supabase.from("transactions").insert({ ...input, user_id: user.id }).select("id").single();
+        if (saved.error || !saved.data) throw saved.error ?? new Error("Unable to save this transaction.");
+        if (receipt_id) {
+          const receiptLink = await supabase.from("receipts").update({ transaction_id: saved.data.id }).eq("id", receipt_id).eq("user_id", user.id).is("transaction_id", null);
+          if (receiptLink.error) throw receiptLink.error;
+        }
+        result = { error: null };
         break;
       }
       case "transaction.delete":
@@ -94,6 +101,27 @@ export async function POST(request: NextRequest) {
       case "goal.contribute":
         result = await supabase.from("goal_contributions").insert({ user_id: user.id, goal_id: id.parse(data.goal_id), amount: z.coerce.number().positive().parse(data.amount), note: z.string().max(2000).optional().parse(data.note) || null });
         break;
+      case "recurringBill.save": {
+        const input = recurringBillSchema.parse(data.input);
+        const recordId = data.id ? id.parse(data.id) : null;
+        const { data: account, error: accountError } = await supabase.from("accounts").select("id").eq("id", input.account_id).eq("user_id", user.id).eq("is_archived", false).maybeSingle();
+        if (accountError || !account) throw new Error("Choose an active account that belongs to you.");
+        result = recordId ? await supabase.from("recurring_bills").update(input).eq("id", recordId).eq("user_id", user.id) : await supabase.from("recurring_bills").insert({ ...input, user_id: user.id });
+        break;
+      }
+      case "recurringBill.delete":
+        result = await supabase.from("recurring_bills").delete().eq("id", id.parse(data.id)).eq("user_id", user.id);
+        break;
+      case "receipt.delete": {
+        const receiptId = id.parse(data.id);
+        const { data: receipt, error: receiptError } = await supabase.from("receipts").select("storage_path").eq("id", receiptId).eq("user_id", user.id).maybeSingle();
+        if (receiptError) throw receiptError;
+        if (!receipt) throw new Error("Receipt not found.");
+        const storageResult = await supabase.storage.from("finwise-receipts").remove([receipt.storage_path]);
+        if (storageResult.error) throw storageResult.error;
+        result = await supabase.from("receipts").delete().eq("id", receiptId).eq("user_id", user.id);
+        break;
+      }
       case "settings.update": {
         const input = z.object({ currency: z.string().regex(/^[A-Z]{3}$/).optional(), emergency_reserve: z.coerce.number().min(0).optional(), upcoming_commitments: z.coerce.number().min(0).optional(), small_purchase_threshold: z.coerce.number().min(0).optional(), onboarding_status: z.enum(["active", "dismissed", "completed"]).optional(), budget_watch_enabled: z.boolean().optional(), budget_watch_warning_percent: z.coerce.number().int().min(1).max(99).optional(), budget_watch_critical_percent: z.coerce.number().int().min(2).max(100).optional(), budget_watch_warning_label: z.string().trim().min(1).max(32).optional(), budget_watch_warning_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), budget_watch_critical_label: z.string().trim().min(1).max(32).optional(), budget_watch_critical_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), backup_reminder_last_acknowledged_on: z.string().date().nullable().optional() }).parse(data.input);
         if (input.budget_watch_warning_percent !== undefined || input.budget_watch_critical_percent !== undefined) {

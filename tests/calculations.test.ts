@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { activeBudgetWatchAlerts, backupReminderDue, budgetProgress, budgetWatchStatus, cashFlowForecast, deriveAccountBalances, emergencyReserveCoverage, financialPulse, formatMoney, goalProgress, monthlyReserveTrend, paymentMethodBreakdown, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
+import { activeBudgetWatchAlerts, annualExpenseRhythm, backupReminderDue, billRunway, budgetProgress, budgetWatchStatus, cashFlowForecast, debtPayoffPath, decisionSimulator, deriveAccountBalances, emergencyReserveCoverage, financialWeather, financialPulse, formatMoney, goalProgress, leakSignals, moneyMap, monthlyReserveTrend, monthlyReview, netWorthTrend, paymentMethodBreakdown, quietWins, recurringBillOccurrences, spendingRhythm, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
 import { classifyPaymentMethod, defaultPaymentMethodForAccount } from "@/lib/finance/payment-methods";
 import { DEFAULT_WORKSPACE_CURRENCY } from "@/lib/finance/currency";
 import { defaultWorkspaceSettings } from "@/lib/finance/store";
-import type { Account, Budget, Category, GoalContribution, SavingsGoal, Transaction, UserSettings } from "@/lib/finance/types";
+import type { Account, Budget, Category, GoalContribution, RecurringBill, SavingsGoal, Transaction, UserSettings } from "@/lib/finance/types";
 
 const accounts: Account[] = [
   { id: "bank", user_id: "user", name: "Bank", type: "bank", opening_balance: 1000, currency: "USD", is_archived: false, created_at: "2026-01-01" },
@@ -93,6 +93,29 @@ describe("financial ledger calculations", () => {
     const constrainedForecast = cashFlowForecast([{ ...accounts[0], opening_balance: 0 }, accounts[1]], [], settings, 30, new Date("2026-08-20"));
     expect(constrainedForecast).toMatchObject({ startingSafeToSpend: 0, endingSafeToSpend: 0 });
   });
+  it("derives proactive planning and insight signals from the ledger without writing any records", () => {
+    const settings: UserSettings = { user_id: "user", currency: "USD", emergency_reserve: 0, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 20, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
+    const categories: Category[] = [{ id: "food", user_id: "user", name: "Food", icon: "utensils", color: "#B8965A", is_archived: false }];
+    const entries = [
+      transaction({ id: "salary", type: "income", amount: 600, transaction_date: "2026-08-01", description: "Salary" }),
+      transaction({ id: "bill", amount: 120, description: "Internet", is_recurring: true, recurrence_interval: "monthly", next_due_date: "2026-08-21", transaction_date: "2026-08-01" }),
+      transaction({ id: "repeat-may", amount: 25, description: "Stream", transaction_date: "2026-06-02" }),
+      transaction({ id: "repeat-jun", amount: 25, description: "Stream", transaction_date: "2026-07-02" }),
+      transaction({ id: "repeat-jul", amount: 25, description: "Stream", transaction_date: "2026-08-02" }),
+      transaction({ id: "food", amount: 75, category_id: "food", need_want: "need", transaction_date: "2026-08-04" }),
+    ];
+    const now = new Date("2026-08-20");
+    expect(billRunway(entries, 30, now)).toMatchObject({ billTotal: 120, incomeTotal: 0 });
+    expect(financialWeather(accounts, entries, settings, now).state).toBe("clear");
+    expect(decisionSimulator(1300, accounts, entries, settings, now)).toMatchObject({ state: "watch", afterPurchase: 30, afterBills: -90 });
+    expect(netWorthTrend(accounts, entries, 2, now)).toHaveLength(2);
+    expect(moneyMap(entries, categories, now)).toMatchObject({ income: 600, essential: 220, flexible: 0, net: 380 });
+    expect(monthlyReview(entries, categories, now)).toMatchObject({ direction: "higher", currentIncome: 600, currentSpending: 220 });
+    expect(spendingRhythm(entries, now)).toHaveLength(5);
+    expect(annualExpenseRhythm(entries, now)).toHaveLength(12);
+    expect(leakSignals(entries, now)[0]).toMatchObject({ description: "stream", average: 25 });
+    expect(quietWins(accounts, entries, categories, settings, now)).toContain("This month’s recorded income is currently ahead of recorded spending.");
+  });
   it("derives a financial pulse and review queue from existing ledger entries without mutating them", () => {
     const categories: Category[] = [{ id: "food", user_id: "user", name: "Food", icon: "utensils", color: "#B8965A", is_archived: false }];
     const entries = [
@@ -110,5 +133,20 @@ describe("financial ledger calculations", () => {
     expect(review.map((item) => item.transaction.id)).toEqual(["current", "uncategorized", "unusual"]);
     expect(review.find((item) => item.transaction.id === "uncategorized")?.reasons).toEqual(["uncategorized"]);
     expect(review.find((item) => item.transaction.id === "unusual")?.reasons).toEqual(["unusual"]);
+  });
+  it("shows only ledger-derived credit balances and recorded repayments in the debt payoff path", () => {
+    const credit: Account = { id: "credit", user_id: "user", name: "Travel card", type: "credit_card", opening_balance: 0, currency: "USD", is_archived: false, created_at: "2026-01-01" };
+    const path = debtPayoffPath([...accounts, credit], [
+      transaction({ id: "credit-spend", account_id: "credit", type: "expense", amount: 600, transaction_date: "2026-08-03" }),
+      transaction({ id: "credit-payment", account_id: "credit", type: "transfer", transfer_id: "credit-payment", transfer_direction: "in", amount: 175, transaction_date: "2026-08-10" }),
+    ], new Date("2026-08-20"));
+    expect(path).toEqual([{ accountId: "credit", accountName: "Travel card", balance: 425, recordedRepaymentsThisMonth: 175 }]);
+  });
+  it("keeps private bill plans as deterministic planning occurrences, never ledger transactions", () => {
+    const bill: RecurringBill = { id: "rent", user_id: "user", account_id: "bank", category_id: null, name: "Rent", amount: 800, cadence: "monthly", next_due_date: "2026-08-05", payment_method: "bank_transfer", notes: null, is_active: true, created_at: "2026-01-01", updated_at: "2026-01-01" };
+    expect(recurringBillOccurrences([bill], "2026-08-01", "2026-09-06")).toMatchObject([{ sourceTransactionId: "bill:rent", dueDate: "2026-08-05", amount: 800 }, { sourceTransactionId: "bill:rent", dueDate: "2026-09-05", amount: 800 }]);
+    expect(billRunway([], 10, new Date("2026-08-01"), [bill])).toMatchObject({ billTotal: 800, items: [{ description: "Rent", amount: 800 }] });
+    expect(cashFlowForecast(accounts, [], defaultWorkspaceSettings, 10, new Date("2026-08-01"), [bill]).days.reduce((total, day) => total + day.expense, 0)).toBe(800);
+    expect(deriveAccountBalances(accounts, [])).toEqual(deriveAccountBalances(accounts, []));
   });
 });

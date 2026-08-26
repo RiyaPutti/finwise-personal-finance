@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Goal, Landmark, LayoutDashboard, ListChecks, Menu, Plus, Settings2, Sparkles, WalletCards } from "lucide-react";
+import { BarChart3, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Compass, Goal, Landmark, LayoutDashboard, ListChecks, Menu, Plus, Settings2, Sparkles, WalletCards, Waypoints } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TransactionDialog } from "@/components/finance/transaction-dialog";
@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  ["overview", "Overview", LayoutDashboard], ["pulse", "Money pulse", Sparkles], ["accounts", "Accounts", Landmark], ["transactions", "Transactions", WalletCards], ["review", "Review transactions", ListChecks],
+  ["overview", "Overview", LayoutDashboard], ["plan", "Plan", Waypoints], ["discover", "Discover", Compass], ["pulse", "Money pulse", Sparkles], ["accounts", "Accounts", Landmark], ["transactions", "Transactions", WalletCards], ["review", "Review transactions", ListChecks],
   ["spend", "Spend analysis", ChartNoAxesCombined], ["calendar", "Calendar", CalendarDays], ["budgets", "Budgets", CircleDollarSign],
   ["goals", "Savings goals", Goal], ["reports", "Reports", BarChart3], ["settings", "Settings", Settings2],
 ] as const;
