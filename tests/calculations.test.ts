@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeBudgetWatchAlerts, annualExpenseRhythm, backupReminderDue, billRunway, budgetProgress, budgetWatchStatus, cashFlowForecast, debtPayoffPath, decisionSimulator, deriveAccountBalances, emergencyReserveCoverage, financialWeather, financialPulse, formatMoney, goalProgress, leakSignals, moneyMap, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyReview, netWorthTrend, paymentMethodBreakdown, quietWins, recurringBillOccurrences, spendingRhythm, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
+import { activeBudgetWatchAlerts, annualExpenseRhythm, backupReminderDue, billRunway, budgetProgress, budgetWatchStatus, cashFlowForecast, debtPayoffPath, decisionSimulator, deriveAccountBalances, emergencyReserveCoverage, financialWeather, financialPulse, formatMoney, goalProgress, leakSignals, moneyMap, monthlyPaymentSpendSplit, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyReview, netWorthTrend, onlineSafeToSpendGuidance, paymentMethodBreakdown, quietWins, recurringBillOccurrences, spendingRhythm, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
 import { classifyPaymentMethod, defaultPaymentMethodForAccount } from "@/lib/finance/payment-methods";
 import { DEFAULT_WORKSPACE_CURRENCY } from "@/lib/finance/currency";
 import { defaultWorkspaceSettings } from "@/lib/finance/store";
@@ -104,6 +104,21 @@ describe("financial ledger calculations", () => {
     expect(classifyPaymentMethod("upi")).toBe("online");
     expect(classifyPaymentMethod(null)).toBe("unknown");
     expect(paymentMethodBreakdown([transaction({ amount: 20, payment_method: "cash" }), transaction({ amount: 30, payment_method: "credit_card" }), transaction({ amount: 40, payment_method: null })])).toEqual({ cash: 20, online: 30, unknown: 40 });
+  });
+  it("derives a current-month payment split and calm low-online-money guidance without changing records", () => {
+    const settings = { ...defaultWorkspaceSettings, small_purchase_threshold: 100, emergency_reserve: 300, upcoming_commitments: 200 };
+    const entries = [
+      transaction({ amount: 80, payment_method: "upi", transaction_date: "2026-08-03" }),
+      transaction({ amount: 40, payment_method: "cash", transaction_date: "2026-08-04" }),
+      transaction({ amount: 20, payment_method: null, transaction_date: "2026-08-05" }),
+      transaction({ amount: 999, payment_method: "upi", transaction_date: "2026-07-31" }),
+      transaction({ type: "income", amount: 400, payment_method: "upi", transaction_date: "2026-08-06" }),
+    ];
+    expect(monthlyPaymentSpendSplit(entries, new Date("2026-08-20"))).toEqual({ online: 80, cash: 40, unknown: 20 });
+    expect(onlineSafeToSpendGuidance(600, 0, settings)).toMatchObject({ kind: "empty", guardrails: 500 });
+    expect(onlineSafeToSpendGuidance(600, 80, settings)).toMatchObject({ kind: "low", threshold: 100 });
+    expect(onlineSafeToSpendGuidance(600, 120, settings)).toBeNull();
+    expect(onlineSafeToSpendGuidance(0, 0, settings)).toBeNull();
   });
   it("defaults Cash Wallets to Cash, restores account history, and only falls back to UPI for standard banks", () => {
     expect(defaultPaymentMethodForAccount("cash", "upi")).toBe("cash");

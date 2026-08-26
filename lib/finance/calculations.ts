@@ -109,6 +109,35 @@ export function paymentMethodBreakdown(transactions: Transaction[]) {
   }, { cash: 0, online: 0, unknown: 0 });
 }
 
+/** Expense-only payment mix for the selected calendar month. Missing methods remain unclassified. */
+export function monthlyPaymentSpendSplit(transactions: Transaction[], now = new Date()) {
+  const { start, end } = dateRangeForMonth(now);
+  return paymentMethodBreakdown(periodExpenses(transactions, start, end));
+}
+
+export interface OnlineSafeToSpendGuidance {
+  kind: "empty" | "low";
+  threshold: number;
+  guardrails: number;
+}
+
+/**
+ * A calm signal tied to the user's existing small-purchase threshold.
+ * It is explanatory only and never moves money, changes records, or blocks spending.
+ */
+export function onlineSafeToSpendGuidance(
+  onlineAvailable: number,
+  onlineSafeToSpend: number,
+  settings?: UserSettings | null,
+): OnlineSafeToSpendGuidance | null {
+  if (onlineAvailable <= 0) return null;
+  const threshold = Math.max(0, monetary(settings?.small_purchase_threshold));
+  const guardrails = Math.max(0, monetary(settings?.emergency_reserve)) + Math.max(0, monetary(settings?.upcoming_commitments));
+  if (onlineSafeToSpend <= 0) return { kind: "empty", threshold, guardrails };
+  if (threshold > 0 && onlineSafeToSpend <= threshold) return { kind: "low", threshold, guardrails };
+  return null;
+}
+
 export function groupedExpensesByCategory(transactions: Transaction[], categories: Category[]) {
   const names = new Map(categories.map((category) => [category.id, category.name]));
   const totals = new Map<string, number>();

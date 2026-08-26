@@ -147,6 +147,9 @@
 - [x] Define ledger-derived Online Safe to Spend and Total Safe to Spend calculations that exclude Cash Reserve and preserve all existing reserve and commitment rules.
 - [x] Add both safe-to-spend measures to Overview with clear cash and reserve context, without changing balances, transactions, or account classifications.
 - [x] Add calculation and Overview regression coverage, then validate typechecking, 69 tests, production build, and responsive grid behavior.
-- [ ] Add transparent, derived account-role labels that distinguish everyday UPI or online accounts, Cash Wallets, Cash Reserve, and long-term holdings without storing new account metadata.
-- [ ] Add a ledger-derived online-versus-cash six-month trend that excludes Cash Reserve and does not create or change financial records.
-- [ ] Add regression coverage, complete typecheck/tests/build and responsive verification, then push the approved enhancement to GitHub and confirm Vercel deployment.
+- [x] Add transparent, derived account-role labels that distinguish everyday UPI or online accounts, Cash Wallets, Cash Reserve, and long-term holdings without storing new account metadata.
+- [x] Add a ledger-derived online-versus-cash six-month trend that excludes Cash Reserve and does not create or change financial records.
+- [x] Add regression coverage, complete typecheck, 72 tests, and production build, then push the approved enhancement to GitHub commit fae819f and confirm Vercel deployment success. The connected browser timed out during final authenticated visual review; no production defect was reported by the deployment or automated validation.
+- [ ] Define a ledger-derived monthly online-versus-cash expense split, a transparent preferred everyday-account setting, and a low-online-spendable-money guidance threshold without automatic financial actions.
+- [ ] Implement the account preference, Overview spending split, and contextual online Safe to Spend guidance without altering balances, transaction history, account classification, or reserve rules.
+- [ ] Add regression coverage, validate typechecking/tests/build and responsive behavior, then push the owner-approved release to GitHub and verify Vercel deployment.

@@ -33,6 +33,15 @@ describe("Overview Safe to Spend explanation contract", () => {
     expect(source).toContain("reserve and commitment guardrails stay in today’s Safe to Spend figures");
   });
 
+  it("keeps the payment split transparent and the preferred everyday account device-private", () => {
+    expect(source).toContain("UPI / online vs cash spending");
+    expect(source).toContain("Expense entries only. A missing payment method stays unclassified");
+    expect(source).toContain("Preferred everyday account");
+    expect(source).toContain("Saved only on this device");
+    expect(source).toContain("does not route payments or change balances");
+    expect(source).toContain("This is a planning signal only; it does not move money or block a transaction.");
+  });
+
   it("personalizes the authenticated workspace homepage while retaining a fallback greeting", () => {
     expect(source).toContain("const firstName = profile?.display_name?.trim().split(/\\s+/)[0] || null;");
     expect(source).toContain('firstName ? `Welcome back, ${firstName}.` : "A clearer view of today."');

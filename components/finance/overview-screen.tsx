@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { useFinance } from "./finance-provider";
-import { emergencyReserveCoverage, formatMoney, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyTrend, summaryMetrics } from "@/lib/finance/calculations";
-import { OnlineCashBalanceChart, ReserveProgressChart, TrendChart } from "./charts";
+import { emergencyReserveCoverage, formatMoney, monthlyPaymentSpendSplit, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyTrend, onlineSafeToSpendGuidance, summaryMetrics } from "@/lib/finance/calculations";
+import { isEligibleEverydayAccount, readPreferredEverydayAccountId, writePreferredEverydayAccountId } from "@/lib/finance/everyday-account";
+import { OnlineCashBalanceChart, ReserveProgressChart, SplitDonut, TrendChart } from "./charts";
 import { TransactionList } from "./transaction-list";
 
 function Metric({
@@ -67,17 +69,34 @@ function Metric({
 
 export function OverviewScreen() {
   const { accounts, profile, transactions, settings, loading } = useFinance();
+  const [preferredEverydayAccountId, setPreferredEverydayAccountId] = useState("");
   const metrics = summaryMetrics(accounts, transactions, settings);
+  const paymentSplit = monthlyPaymentSpendSplit(transactions);
+  const onlineGuidance = onlineSafeToSpendGuidance(metrics.onlineAvailable, metrics.onlineSafeToSpend, settings);
   const reserveCoverage = emergencyReserveCoverage(accounts, transactions, settings);
   const reserveTrend = monthlyReserveTrend(accounts, transactions);
   const spendableBalanceTrend = monthlySpendableBalanceTrend(accounts, transactions);
   const hasReserveAccount = accounts.some((account) => !account.is_archived && account.type === "cash_reserve");
+  const everydayAccounts = accounts.filter(isEligibleEverydayAccount);
+  const preferredEverydayAccount = everydayAccounts.find((account) => account.id === preferredEverydayAccountId) ?? null;
+  const paymentSplitData = [
+    { name: "UPI / online", value: paymentSplit.online },
+    { name: "Cash", value: paymentSplit.cash },
+    { name: "Unspecified", value: paymentSplit.unknown },
+  ].filter((item) => item.value > 0);
   const currency = settings?.currency ?? "USD";
   const firstName = profile?.display_name?.trim().split(/\s+/)[0] || null;
   const onlineSafeToSpendFormula =
     "UPI / online Safe to Spend = max(0, active Bank and Other account balances − Emergency reserve − Upcoming commitments). Cash Wallet, Cash Reserve, Savings, Investments, and Credit cards are excluded.";
   const totalSafeToSpendFormula =
     "Total Safe to Spend = UPI / online Safe to Spend + active Cash Wallet balances. Cash Reserve, Savings, Investments, and Credit cards remain excluded.";
+
+  useEffect(() => {
+    const sync = () => setPreferredEverydayAccountId(readPreferredEverydayAccountId());
+    sync();
+    window.addEventListener("finwise:preferred-everyday-account-change", sync);
+    return () => window.removeEventListener("finwise:preferred-everyday-account-change", sync);
+  }, []);
 
   if (loading) {
     return (
@@ -120,6 +139,16 @@ export function OverviewScreen() {
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{formatMoney(reserveCoverage.held, currency)} is held in active Cash reserve accounts, meeting your {formatMoney(reserveCoverage.target, currency)} target. Your target remains a planning guardrail and does not move money.</p>
           </div>
           <Link className="shrink-0 text-sm font-semibold text-[var(--positive)] transition hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--positive)]" href="/app/settings">Edit target</Link>
+        </div>
+      ) : null}
+
+      {onlineGuidance ? (
+        <div role="status" aria-live="polite" className="flex flex-col gap-3 rounded-2xl border border-[var(--gold)]/35 bg-[var(--gold)]/10 p-4 sm:flex-row sm:items-center">
+          <Smartphone size={19} className="mt-0.5 shrink-0 text-[var(--gold)] sm:mt-0" />
+          <div>
+            <p className="text-sm font-semibold">{onlineGuidance.kind === "empty" ? "UPI / online Safe to Spend is currently zero" : "UPI / online Safe to Spend is low"}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{onlineGuidance.kind === "empty" ? "Your current reserve and commitment guardrails leave no UPI / online spendable amount today." : `Your UPI / online Safe to Spend is at or below your ${formatMoney(onlineGuidance.threshold, currency)} small-purchase threshold.`} {metrics.cashInHand > 0 ? `${formatMoney(metrics.cashInHand, currency)} of physical cash stays separate in Total Safe to Spend.` : "This is a planning signal only; it does not move money or block a transaction."}</p>
+          </div>
         </div>
       ) : null}
 
@@ -188,6 +217,22 @@ export function OverviewScreen() {
           </div>
 
           <Card className="p-5 sm:p-6">
+            <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[.16em] text-[var(--accent)]">This month</p>
+                <h2 className="mt-2 font-display text-lg font-semibold">UPI / online vs cash spending</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Expense entries only. A missing payment method stays unclassified and is never counted as online.</p>
+                <div className="mt-5 grid gap-2 text-sm">
+                  <div className="flex justify-between"><span className="text-[var(--muted)]">UPI / online</span><span className="font-mono">{formatMoney(paymentSplit.online, currency)}</span></div>
+                  <div className="flex justify-between"><span className="text-[var(--muted)]">Cash</span><span className="font-mono">{formatMoney(paymentSplit.cash, currency)}</span></div>
+                  {paymentSplit.unknown > 0 ? <div className="flex justify-between"><span className="text-[var(--muted)]">Unspecified</span><span className="font-mono">{formatMoney(paymentSplit.unknown, currency)}</span></div> : null}
+                </div>
+              </div>
+              <SplitDonut data={paymentSplitData} currency={currency} />
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="font-display text-lg font-semibold">UPI / online and cash balance</h2>
@@ -232,6 +277,25 @@ export function OverviewScreen() {
             <Card className="p-5">
               <p className="text-xs font-medium uppercase tracking-[.15em] text-[var(--muted)]">Safe-to-spend method</p>
               <p className="mt-3 font-display text-xl font-semibold">Online first, cash kept distinct.</p>
+              {everydayAccounts.length ? (
+                <label className="mt-5 grid gap-2 text-sm">
+                  <span className="font-medium">Preferred everyday account</span>
+                  <select
+                    value={preferredEverydayAccountId}
+                    onChange={(event) => {
+                      const accountId = event.target.value;
+                      setPreferredEverydayAccountId(accountId);
+                      writePreferredEverydayAccountId(accountId);
+                    }}
+                    className="h-10 rounded-xl border border-[var(--line)] bg-[var(--raised)] px-3 text-sm outline-none transition focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/25"
+                  >
+                    <option value="">No preference</option>
+                    {everydayAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                  </select>
+                  <span className="text-xs leading-5 text-[var(--muted)]">Saved only on this device. It provides context and does not route payments or change balances.</span>
+                </label>
+              ) : null}
+              {preferredEverydayAccount ? <p className="mt-3 text-xs text-[var(--gold)]">Everyday context: {preferredEverydayAccount.name}</p> : null}
               <div className="mt-5 grid gap-3 text-sm">
                 <div className="flex justify-between text-[var(--muted)]"><span>UPI / online available</span><span className="font-mono text-[var(--ink)]">{formatMoney(metrics.onlineAvailable, currency)}</span></div>
                 <div className="flex justify-between text-[var(--muted)]"><span>Emergency reserve</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.emergency_reserve ?? 0, currency)}</span></div>
