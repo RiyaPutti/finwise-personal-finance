@@ -44,6 +44,10 @@ drop policy if exists "users_manage_own_receipts" on public.receipts;
 create policy "users_manage_own_receipts" on public.receipts
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- RLS policies restrict rows; authenticated table privileges permit the Supabase Data API
+-- to evaluate those policies for the signed-in user.
+grant select, insert, update, delete on table public.recurring_bills, public.receipts to authenticated;
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('finwise-receipts', 'finwise-receipts', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set public = false, file_size_limit = 5242880, allowed_mime_types = excluded.allowed_mime_types;

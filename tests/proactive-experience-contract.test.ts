@@ -54,4 +54,15 @@ describe("proactive Finwise experience contract", () => {
     expect(transactions).toContain("ReceiptDraftDialog");
     expect(transactions).toContain("TransactionList transactions={filtered}");
   });
+
+  it("keeps the established ledger available if optional proactive tables are not yet exposed by the Data API", () => {
+    const store = source("lib/finance/store.ts");
+    const migration = source("supabase/migrations/202608140006_proactive_finance_persistence.sql");
+    const correctiveMigration = source("supabase/migrations/202608140007_proactive_persistence_grants.sql");
+    expect(store).toContain("optionalPersistenceErrorCodes");
+    expect(store).toContain('"42501"');
+    expect(store).toContain('"PGRST204"');
+    expect(migration).toContain("grant select, insert, update, delete on table public.recurring_bills, public.receipts to authenticated;");
+    expect(correctiveMigration).toContain("grant select, insert, update, delete on table public.recurring_bills, public.receipts to authenticated;");
+  });
 });

@@ -9,6 +9,10 @@ import { DEFAULT_WORKSPACE_CURRENCY } from "./currency";
 export const defaultWorkspaceSettings: UserSettings = { user_id: "", currency: DEFAULT_WORKSPACE_CURRENCY, emergency_reserve: 0, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 100, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
 const defaultSettings = defaultWorkspaceSettings;
 const emptySnapshot: FinanceSnapshot = { profile: null, settings: defaultSettings, accounts: [], categories: [], transactions: [], budgets: [], goals: [], contributions: [], recurringBills: [], receipts: [] };
+// Planning records enhance the workspace but must never block the established ledger.
+// PGRST205/204 and 42P01 cover an unapplied migration or stale API schema cache; 42501
+// covers an already-created table whose authenticated table grants are still pending.
+const optionalPersistenceErrorCodes = new Set(["42P01", "42501", "PGRST204", "PGRST205"]);
 const normalize = <T extends Record<string, unknown>>(record: T): T => {
   const numeric = ["amount", "opening_balance", "target_amount", "emergency_reserve", "upcoming_commitments", "small_purchase_threshold", "budget_watch_warning_percent", "budget_watch_critical_percent"];
   return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, numeric.includes(key) ? (value === null ? null : Number(value ?? 0)) : value])) as T;
@@ -39,7 +43,7 @@ async function querySnapshot(): Promise<FinanceSnapshot> {
   ]);
   const error = results.slice(0, 8).map((result) => result.error).find(Boolean);
   if (error) throw error;
-  const optionalError = results.slice(8).map((result) => result.error).find((queryError) => queryError && !["42P01", "PGRST205"].includes(queryError.code ?? ""));
+  const optionalError = results.slice(8).map((result) => result.error).find((queryError) => queryError && !optionalPersistenceErrorCodes.has(queryError.code ?? ""));
   if (optionalError) throw optionalError;
   return {
     profile: results[0].data ? normalize(results[0].data) : null,

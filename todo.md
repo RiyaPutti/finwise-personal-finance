@@ -137,3 +137,6 @@
 - [ ] Perform authenticated live end-to-end testing of Plan, Discover, search/rules, private receipt drafting, and legacy financial workflows using the owner-provided account.
 - [ ] Commit and push the owner-approved proactive-finance release to GitHub, then confirm the resulting Vercel deployment is successful.
 - [ ] Verify Plan, Discover, search/rules, private receipt drafting, and legacy workflows on the authenticated production site after Vercel deploys the approved new source.
+- [ ] Diagnose and correct the production workspace-load regression introduced when optional proactive persistence queries are unavailable or not exposed through Supabase Data API.
+- [ ] Add regression coverage proving optional recurring-bill and receipt persistence failures cannot block the established ledger workspace.
+- [ ] Validate the corrective release locally, deploy it to GitHub/Vercel, and resume authenticated production smoke testing.
