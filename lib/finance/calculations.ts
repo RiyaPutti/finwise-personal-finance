@@ -58,21 +58,43 @@ export function isSpendableAccount(type: AccountType) {
   return !["cash_reserve", "savings", "investment", "credit_card"].includes(type);
 }
 
+/** Bank and other non-cash accounts that can support UPI or online spending. */
+export function isOnlineSpendableAccount(type: AccountType) {
+  return isSpendableAccount(type) && type !== "cash";
+}
+
 export function summaryMetrics(accounts: Account[], transactions: Transaction[], settings?: UserSettings | null, now = new Date()) {
   const balances = deriveAccountBalances(accounts, transactions);
   const active = accounts.filter((account) => !account.is_archived);
   const balanceOf = (account: Account) => balances.get(account.id) ?? 0;
   const totalBalance = active.reduce((total, account) => total + balanceOf(account), 0);
   const savingsAndReserves = active.filter((account) => ["cash_reserve", "savings", "investment"].includes(account.type)).reduce((total, account) => total + balanceOf(account), 0);
-  const available = active.filter((account) => isSpendableAccount(account.type)).reduce((total, account) => total + balanceOf(account), 0);
+  const onlineAvailable = active.filter((account) => isOnlineSpendableAccount(account.type)).reduce((total, account) => total + balanceOf(account), 0);
   const cashInHand = active.filter((account) => account.type === "cash").reduce((total, account) => total + balanceOf(account), 0);
+  const available = onlineAvailable + cashInHand;
   const range = dateRangeForMonth(now);
   const inMonth = transactions.filter((transaction) => transaction.transaction_date >= range.start && transaction.transaction_date <= range.end);
   const income = inMonth.filter((transaction) => transaction.type === "income").reduce((total, transaction) => total + monetary(transaction.amount), 0);
   const spending = inMonth.filter((transaction) => transaction.type === "expense").reduce((total, transaction) => total + monetary(transaction.amount), 0);
   const reserve = monetary(settings?.emergency_reserve);
   const commitments = monetary(settings?.upcoming_commitments);
-  return { totalBalance, savingsAndReserves, available, cashInHand, income, spending, monthlySavings: income - spending, safeToSpend: Math.max(0, available - reserve - commitments), balances };
+  const onlineSafeToSpend = Math.max(0, onlineAvailable - reserve - commitments);
+  const totalSafeToSpend = Math.max(0, onlineSafeToSpend + cashInHand);
+  return {
+    totalBalance,
+    savingsAndReserves,
+    available,
+    onlineAvailable,
+    cashInHand,
+    income,
+    spending,
+    monthlySavings: income - spending,
+    onlineSafeToSpend,
+    totalSafeToSpend,
+    // Compatibility alias for existing consumers. It now explicitly represents the total, including Cash Wallet funds.
+    safeToSpend: totalSafeToSpend,
+    balances,
+  };
 }
 
 export function periodExpenses(transactions: Transaction[], start: string, end: string) {
@@ -129,6 +151,33 @@ export function monthlyReserveTrend(accounts: Account[], transactions: Transacti
       return total + ledgerBalance;
     }, 0);
     return { label: format(month, "MMM"), balance };
+  });
+}
+
+export interface MonthlySpendableBalanceTrendPoint {
+  label: string;
+  online: number;
+  cash: number;
+}
+
+/** Month-end balances for everyday online accounts and Cash Wallets only. Planning guardrails remain in the current safe-to-spend figures. */
+export function monthlySpendableBalanceTrend(accounts: Account[], transactions: Transaction[], months = 6, now = new Date()): MonthlySpendableBalanceTrendPoint[] {
+  const active = accounts.filter((account) => !account.is_archived);
+  const balanceAt = (account: Account, cutoff: string) => {
+    if (account.created_at.slice(0, 10) > cutoff) return 0;
+    return transactions
+      .filter((transaction) => transaction.account_id === account.id && transaction.transaction_date <= cutoff)
+      .reduce((value, transaction) => value + (transaction.type === "income" || transaction.transfer_direction === "in" ? monetary(transaction.amount) : -monetary(transaction.amount)), monetary(account.opening_balance));
+  };
+
+  return Array.from({ length: months }, (_, index) => {
+    const month = subMonths(now, months - index - 1);
+    const cutoff = format(endOfMonth(month), "yyyy-MM-dd");
+    return {
+      label: format(month, "MMM"),
+      online: active.filter((account) => isOnlineSpendableAccount(account.type)).reduce((total, account) => total + balanceAt(account, cutoff), 0),
+      cash: active.filter((account) => account.type === "cash").reduce((total, account) => total + balanceAt(account, cutoff), 0),
+    };
   });
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeBudgetWatchAlerts, annualExpenseRhythm, backupReminderDue, billRunway, budgetProgress, budgetWatchStatus, cashFlowForecast, debtPayoffPath, decisionSimulator, deriveAccountBalances, emergencyReserveCoverage, financialWeather, financialPulse, formatMoney, goalProgress, leakSignals, moneyMap, monthlyReserveTrend, monthlyReview, netWorthTrend, paymentMethodBreakdown, quietWins, recurringBillOccurrences, spendingRhythm, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
+import { activeBudgetWatchAlerts, annualExpenseRhythm, backupReminderDue, billRunway, budgetProgress, budgetWatchStatus, cashFlowForecast, debtPayoffPath, decisionSimulator, deriveAccountBalances, emergencyReserveCoverage, financialWeather, financialPulse, formatMoney, goalProgress, leakSignals, moneyMap, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyReview, netWorthTrend, paymentMethodBreakdown, quietWins, recurringBillOccurrences, spendingRhythm, summaryMetrics, transactionReviewQueue } from "@/lib/finance/calculations";
 import { classifyPaymentMethod, defaultPaymentMethodForAccount } from "@/lib/finance/payment-methods";
 import { DEFAULT_WORKSPACE_CURRENCY } from "@/lib/finance/currency";
 import { defaultWorkspaceSettings } from "@/lib/finance/store";
@@ -32,6 +32,21 @@ describe("financial ledger calculations", () => {
     expect(summaryMetrics(accounts, [], settings).safeToSpend).toBe(0);
     expect(summaryMetrics([{ ...accounts[0], opening_balance: 2000 }, accounts[1]], [], settings).safeToSpend).toBe(500);
   });
+  it("keeps Cash Wallet distinct from UPI or online safe-to-spend while including it in the total", () => {
+    const splitAccounts: Account[] = [
+      { ...accounts[0], opening_balance: 1200 },
+      { ...accounts[1], opening_balance: 400 },
+      { id: "cash", user_id: "user", name: "Wallet", type: "cash", opening_balance: 300, currency: "INR", is_archived: false, created_at: "2026-01-01" },
+      { id: "savings", user_id: "user", name: "Savings", type: "savings", opening_balance: 900, currency: "INR", is_archived: false, created_at: "2026-01-01" },
+    ];
+    const settings: UserSettings = { user_id: "user", currency: "INR", emergency_reserve: 500, upcoming_commitments: 200, theme: "dark", small_purchase_threshold: 100, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
+    const metrics = summaryMetrics(splitAccounts, [], settings);
+    expect(metrics).toMatchObject({ onlineAvailable: 1200, cashInHand: 300, onlineSafeToSpend: 500, totalSafeToSpend: 800, safeToSpend: 800 });
+    expect(metrics.savingsAndReserves).toBe(1300);
+
+    const cashOnlyAfterGuardrails = summaryMetrics([{ ...splitAccounts[0], opening_balance: 100 }, ...splitAccounts.slice(1)], [], settings);
+    expect(cashOnlyAfterGuardrails).toMatchObject({ onlineSafeToSpend: 0, cashInHand: 300, totalSafeToSpend: 300 });
+  });
   it("derives active Cash reserve month-end balances and below-target coverage from the ledger", () => {
     const reserveAccounts: Account[] = [
       { ...accounts[1], opening_balance: 100, created_at: "2026-01-01" },
@@ -47,6 +62,22 @@ describe("financial ledger calculations", () => {
     const settings: UserSettings = { user_id: "user", currency: "USD", emergency_reserve: 300, upcoming_commitments: 0, theme: "dark", small_purchase_threshold: 20, onboarding_status: "active", budget_watch_enabled: true, budget_watch_warning_percent: 75, budget_watch_critical_percent: 90, budget_watch_warning_label: "Watch", budget_watch_warning_color: "#B8965A", budget_watch_critical_label: "Critical", budget_watch_critical_color: "#C06C5D", backup_reminder_last_acknowledged_on: null };
     expect(emergencyReserveCoverage(reserveAccounts, entries, settings)).toMatchObject({ held: 205, target: 300, shortfall: 95, belowTarget: true });
     expect(emergencyReserveCoverage(reserveAccounts, entries, { ...settings, emergency_reserve: 0 })).toMatchObject({ target: 0, shortfall: 0, belowTarget: false });
+  });
+  it("tracks online and Cash Wallet month-end balances separately while excluding reserves", () => {
+    const trendAccounts: Account[] = [
+      { ...accounts[0], id: "bank-account", opening_balance: 1000, created_at: "2026-01-01" },
+      { id: "cash-account", user_id: "user", name: "Wallet", type: "cash", opening_balance: 200, currency: "USD", is_archived: false, created_at: "2026-01-01" },
+      { id: "reserve-account", user_id: "user", name: "Reserve", type: "cash_reserve", opening_balance: 900, currency: "USD", is_archived: false, created_at: "2026-01-01" },
+    ];
+    const entries = [
+      transaction({ account_id: "bank-account", type: "expense", amount: 250, transaction_date: "2026-02-10" }),
+      transaction({ id: "cash-income", account_id: "cash-account", type: "income", amount: 100, transaction_date: "2026-03-06" }),
+      transaction({ id: "reserve-income", account_id: "reserve-account", type: "income", amount: 500, transaction_date: "2026-03-06" }),
+    ];
+    expect(monthlySpendableBalanceTrend(trendAccounts, entries, 2, new Date("2026-03-15T12:00:00Z"))).toEqual([
+      { label: "Feb", online: 750, cash: 200 },
+      { label: "Mar", online: 750, cash: 300 },
+    ]);
   });
   it("calculates budget and savings-goal progress deterministically", () => {
     const budget: Budget = { id: "budget", user_id: "user", category_id: "food", amount: 100, starts_on: "2026-08-01", ends_on: "2026-08-31", budget_watch_warning_percent: null, budget_watch_critical_percent: null };

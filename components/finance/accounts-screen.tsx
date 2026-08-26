@@ -22,6 +22,16 @@ const labels: Record<Account["type"], string> = {
   other: "Other",
 };
 
+const roleLabels: Record<Account["type"], string> = {
+  bank: "UPI / online spending",
+  cash: "Cash in hand",
+  cash_reserve: "Reserve only",
+  savings: "Held aside",
+  credit_card: "Credit line",
+  investment: "Long-term holding",
+  other: "Everyday online",
+};
+
 const iconMap: Record<Account["type"], typeof Landmark> = {
   bank: Landmark,
   cash: Wallet,
@@ -40,7 +50,6 @@ function AccountCard({ account, transactions, currency, onEdit, onLifecycle }: {
   onLifecycle: () => void;
 }) {
   const balance = accountBalance(account, transactions);
-  const isReserve = account.type === "cash_reserve" || account.type === "savings" || account.type === "investment";
   const Icon = iconMap[account.type];
 
   return <Card className="group relative overflow-hidden p-5">
@@ -50,7 +59,7 @@ function AccountCard({ account, transactions, currency, onEdit, onLifecycle }: {
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--raised)] text-[var(--accent)]"><Icon size={17} /></span>
         <div className="min-w-0">
           <p className="truncate font-display text-base font-semibold">{account.name}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">{labels[account.type]}{isReserve ? " · kept aside" : ""}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">{labels[account.type]} · {roleLabels[account.type]}</p>
         </div>
       </div>
       <button type="button" aria-label={`Edit ${account.name}`} onClick={onEdit} className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[var(--muted)] transition hover:bg-[var(--raised)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"><Pencil size={16} /></button>
@@ -123,7 +132,7 @@ export function AccountsScreen() {
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--raised)] text-[var(--accent)]"><Icon size={15} /></span>
               <div className="min-w-0">
                 <p className="truncate text-sm text-[var(--ink)]">{account.name}</p>
-                <p className="mt-0.5 text-xs text-[var(--muted)]">{labels[account.type]} · archived</p>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">{labels[account.type]} · {roleLabels[account.type]} · archived</p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">

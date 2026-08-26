@@ -132,11 +132,21 @@
 - [x] Confirm the root homepage continues routing unauthenticated visitors through the existing authentication flow while signed-in visitors reach the personalized Overview greeting.
 - [x] Add focused source coverage for the preserved root route and personalized authenticated Overview greeting.
 - [x] Save a checkpoint, commit the verified source changes, push the authorized GitHub release, and confirm the Vercel deployment status; commit 251bc6a reports a successful Vercel deployment.
-- [ ] Apply and verify the additive proactive-finance Supabase migration for private recurring bills, receipt metadata, storage bucket policies, and RLS.
-- [ ] Use a credential-safe alternate migration path because the Supabase SQL Editor rejects non-empty queries, then verify the exact additive schema objects.
-- [ ] Perform authenticated live end-to-end testing of Plan, Discover, search/rules, private receipt drafting, and legacy financial workflows using the owner-provided account.
-- [ ] Commit and push the owner-approved proactive-finance release to GitHub, then confirm the resulting Vercel deployment is successful.
-- [ ] Verify Plan, Discover, search/rules, private receipt drafting, and legacy workflows on the authenticated production site after Vercel deploys the approved new source.
-- [ ] Diagnose and correct the production workspace-load regression introduced when optional proactive persistence queries are unavailable or not exposed through Supabase Data API.
-- [ ] Add regression coverage proving optional recurring-bill and receipt persistence failures cannot block the established ledger workspace.
-- [ ] Validate the corrective release locally, deploy it to GitHub/Vercel, and resume authenticated production smoke testing.
+- [x] Apply and verify the additive proactive-finance Supabase migration for private recurring bills, receipt metadata, storage bucket policies, and RLS; the owner confirmed application, the dashboard showed the new persistence objects, and live bill-plan persistence verified the authenticated table path.
+- [x] Use a credential-safe alternate migration path because the Supabase SQL Editor rejects non-empty queries, then verify the exact additive schema objects; no alternate path was needed after the owner applied the migration and later grant directly.
+- [x] Perform authenticated live end-to-end testing of Plan, Discover, search/rules, private receipt drafting, and legacy financial workflows using the owner-provided account; controls, navigation, empty states, and bill-plan persistence were checked without retaining test financial data.
+- [x] Commit and push the owner-approved proactive-finance release to GitHub, then confirm the resulting Vercel deployment is successful; initial commit 7a4dbcf deployed successfully.
+- [x] Verify Plan, Discover, search/rules, private receipt drafting, and legacy workflows on the authenticated production site after the corrective Supabase grant is applied; navigation, empty states, search/rules controls, receipt-draft entry, Calendar, Money Pulse, and legacy Accounts loading are confirmed.
+- [x] Diagnose and correct the production workspace-load regression introduced when optional proactive persistence queries are unavailable or not exposed through Supabase Data API.
+- [x] Add regression coverage proving optional recurring-bill and receipt persistence failures cannot block the established ledger workspace.
+- [x] Validate the corrective release locally, deploy it to GitHub/Vercel, and resume authenticated production smoke testing; commit bc52453 is Vercel-successful.
+- [x] Create, archive, and permanently delete the owner-authorized zero-balance disposable account used for production smoke testing; no test transaction or bill-plan record remains.
+- [x] Apply the narrowly scoped authenticated table grant for recurring_bills and receipts from 202608140007_proactive_persistence_grants.sql; confirmed by the user and functionally verified through the live bill-plan flow.
+- [x] Verify the user-confirmed authenticated-table grant with a live disposable recurring-bill save and delete, without creating a ledger transaction.
+- [x] Record the final live verification result, update the release checklist, and save the completed production-release checkpoint.
+- [x] Define ledger-derived Online Safe to Spend and Total Safe to Spend calculations that exclude Cash Reserve and preserve all existing reserve and commitment rules.
+- [x] Add both safe-to-spend measures to Overview with clear cash and reserve context, without changing balances, transactions, or account classifications.
+- [x] Add calculation and Overview regression coverage, then validate typechecking, 69 tests, production build, and responsive grid behavior.
+- [ ] Add transparent, derived account-role labels that distinguish everyday UPI or online accounts, Cash Wallets, Cash Reserve, and long-term holdings without storing new account metadata.
+- [ ] Add a ledger-derived online-versus-cash six-month trend that excludes Cash Reserve and does not create or change financial records.
+- [ ] Add regression coverage, complete typecheck/tests/build and responsive verification, then push the approved enhancement to GitHub and confirm Vercel deployment.

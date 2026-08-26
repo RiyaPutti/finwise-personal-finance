@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleHelp, Landmark, PiggyBank, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { Button } from "@/components/ui/button";
 import { useFinance } from "./finance-provider";
-import { emergencyReserveCoverage, formatMoney, monthlyReserveTrend, monthlyTrend, summaryMetrics } from "@/lib/finance/calculations";
-import { ReserveProgressChart, TrendChart } from "./charts";
+import { emergencyReserveCoverage, formatMoney, monthlyReserveTrend, monthlySpendableBalanceTrend, monthlyTrend, summaryMetrics } from "@/lib/finance/calculations";
+import { OnlineCashBalanceChart, ReserveProgressChart, TrendChart } from "./charts";
 import { TransactionList } from "./transaction-list";
 
 function Metric({
@@ -70,11 +70,14 @@ export function OverviewScreen() {
   const metrics = summaryMetrics(accounts, transactions, settings);
   const reserveCoverage = emergencyReserveCoverage(accounts, transactions, settings);
   const reserveTrend = monthlyReserveTrend(accounts, transactions);
+  const spendableBalanceTrend = monthlySpendableBalanceTrend(accounts, transactions);
   const hasReserveAccount = accounts.some((account) => !account.is_archived && account.type === "cash_reserve");
   const currency = settings?.currency ?? "USD";
   const firstName = profile?.display_name?.trim().split(/\s+/)[0] || null;
-  const safeToSpendFormula =
-    "Safe to Spend = max(0, active account balances excluding Cash reserve, Savings, Investments, and Credit cards − Emergency reserve − Upcoming commitments).";
+  const onlineSafeToSpendFormula =
+    "UPI / online Safe to Spend = max(0, active Bank and Other account balances − Emergency reserve − Upcoming commitments). Cash Wallet, Cash Reserve, Savings, Investments, and Credit cards are excluded.";
+  const totalSafeToSpendFormula =
+    "Total Safe to Spend = UPI / online Safe to Spend + active Cash Wallet balances. Cash Reserve, Savings, Investments, and Credit cards remain excluded.";
 
   if (loading) {
     return (
@@ -130,16 +133,17 @@ export function OverviewScreen() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
             <Metric label="Total balance" value={formatMoney(metrics.totalBalance, currency)} helper="Across all active accounts" icon={Landmark} />
             <Metric
-              label="Safe to spend"
-              value={formatMoney(metrics.safeToSpend, currency)}
+              label="UPI / online safe"
+              value={formatMoney(metrics.onlineSafeToSpend, currency)}
               helper="After reserve and commitments"
               tone="positive"
-              icon={ShieldCheck}
-              tooltip={safeToSpendFormula}
+              icon={Smartphone}
+              tooltip={onlineSafeToSpendFormula}
             />
+            <Metric label="Total safe to spend" value={formatMoney(metrics.totalSafeToSpend, currency)} helper="UPI / online plus cash" tone="positive" icon={ShieldCheck} tooltip={totalSafeToSpendFormula} />
             <Metric label="This month in" value={formatMoney(metrics.income, currency)} helper="Income recorded this month" tone="positive" icon={ArrowDownRight} />
             <Metric label="This month out" value={formatMoney(metrics.spending, currency)} helper="Actual expenses only" tone="warm" icon={ArrowUpRight} />
           </div>
@@ -178,10 +182,25 @@ export function OverviewScreen() {
                   </div>
                   <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-300/10 text-blue-300"><Wallet size={19} /></div>
                 </div>
-                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">Physical cash spent from a cash wallet is included in total spending and analysable separately.</p>
+                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">Physical cash stays separate from UPI / online spending and is added only to Total Safe to Spend.</p>
               </Card>
             </div>
           </div>
+
+          <Card className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-display text-lg font-semibold">UPI / online and cash balance</h2>
+                <p className="mt-1 text-xs text-[var(--muted)]">Month-end balance from active everyday accounts · last six months</p>
+              </div>
+              <div className="flex gap-3 text-xs text-[var(--muted)]">
+                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#C6A15A]" />UPI / online</span>
+                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#98ABB8]" />Cash Wallet</span>
+              </div>
+            </div>
+            <OnlineCashBalanceChart data={spendableBalanceTrend} currency={currency} />
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">This view replays opening balances and recorded ledger activity for Bank, Other, and Cash Wallet accounts. Cash Reserve, Savings, Investments, and Credit cards remain excluded; reserve and commitment guardrails stay in today’s Safe to Spend figures.</p>
+          </Card>
 
           <Card className="p-5 sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -212,12 +231,14 @@ export function OverviewScreen() {
 
             <Card className="p-5">
               <p className="text-xs font-medium uppercase tracking-[.15em] text-[var(--muted)]">Safe-to-spend method</p>
-              <p className="mt-3 font-display text-xl font-semibold">Available money, with guardrails.</p>
+              <p className="mt-3 font-display text-xl font-semibold">Online first, cash kept distinct.</p>
               <div className="mt-5 grid gap-3 text-sm">
-                <div className="flex justify-between text-[var(--muted)]"><span>Available spending money</span><span className="font-mono text-[var(--ink)]">{formatMoney(metrics.available, currency)}</span></div>
+                <div className="flex justify-between text-[var(--muted)]"><span>UPI / online available</span><span className="font-mono text-[var(--ink)]">{formatMoney(metrics.onlineAvailable, currency)}</span></div>
                 <div className="flex justify-between text-[var(--muted)]"><span>Emergency reserve</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.emergency_reserve ?? 0, currency)}</span></div>
                 <div className="flex justify-between text-[var(--muted)]"><span>Upcoming commitments</span><span className="font-mono text-[var(--ink)]">−{formatMoney(settings?.upcoming_commitments ?? 0, currency)}</span></div>
-                <div className="mt-1 flex justify-between border-t border-[var(--line)] pt-3 font-medium"><span>Safe to spend</span><span className="font-mono text-[var(--positive)]">{formatMoney(metrics.safeToSpend, currency)}</span></div>
+                <div className="mt-1 flex justify-between border-t border-[var(--line)] pt-3 font-medium"><span>UPI / online safe</span><span className="font-mono text-[var(--positive)]">{formatMoney(metrics.onlineSafeToSpend, currency)}</span></div>
+                <div className="flex justify-between text-[var(--muted)]"><span>Cash in hand</span><span className="font-mono text-[var(--ink)]">+{formatMoney(metrics.cashInHand, currency)}</span></div>
+                <div className="mt-1 flex justify-between border-t border-[var(--line)] pt-3 font-medium"><span>Total safe to spend</span><span className="font-mono text-[var(--positive)]">{formatMoney(metrics.totalSafeToSpend, currency)}</span></div>
               </div>
             </Card>
           </div>

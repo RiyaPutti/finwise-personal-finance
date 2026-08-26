@@ -37,6 +37,13 @@ describe("Accounts screen interaction contract", () => {
     expect(accountDialog).not.toContain('type="color"');
   });
 
+  it("labels money roles transparently without adding editable account metadata", () => {
+    expect(accountsScreen).toContain('bank: "UPI / online spending"');
+    expect(accountsScreen).toContain('cash: "Cash in hand"');
+    expect(accountsScreen).toContain('cash_reserve: "Reserve only"');
+    expect(accountsScreen).toContain("roleLabels[account.type]");
+  });
+
   it("uses typed archive confirmation and blocks permanent deletion when ledger history exists", () => {
     expect(accountsScreen).toContain('confirmation !== "ARCHIVE"');
     expect(accountsScreen).toContain('Type ARCHIVE to confirm');
