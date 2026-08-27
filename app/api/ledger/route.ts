@@ -8,7 +8,12 @@ const id = z.string().uuid();
 const bodySchema = z.object({ action: z.string(), data: z.unknown() });
 
 function errorResponse(error: unknown, status = 400) {
-  return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to complete this request." }, { status });
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
+      ? error.message
+      : "Unable to complete this request.";
+  return NextResponse.json({ error: message }, { status });
 }
 
 async function getSession() {
@@ -58,8 +63,9 @@ export async function POST(request: NextRequest) {
       case "transaction.save": {
         const parsedInput = transactionSchema.parse(data.input);
         const { receipt_id, ...input } = parsedInput;
-        const { data: account, error: accountError } = await supabase.from("accounts").select("type").eq("id", input.account_id).single();
+        const { data: account, error: accountError } = await supabase.from("accounts").select("type").eq("id", input.account_id).eq("user_id", user.id).eq("is_archived", false).maybeSingle();
         if (accountError || !account) throw new Error("Choose an active account that belongs to you.");
+        if (account.type === "cash_reserve") throw new Error("Cash Reserve money can only be moved with a transfer.");
         if (input.type === "expense" && account.type !== "cash" && !input.payment_method) throw new Error("Select the payment method used for this non-cash account.");
         if (input.type === "expense" && account.type === "cash") input.payment_method = "cash";
         const recordId = data.id ? id.parse(data.id) : null;

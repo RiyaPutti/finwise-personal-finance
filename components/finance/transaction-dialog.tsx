@@ -55,6 +55,7 @@ export function TransactionDialog({ open, onClose, transaction, draft }: { open:
   const [formError, setFormError] = useState("");
   const [categoryRules, setCategoryRules] = useState<CategoryRule[]>([]);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.is_archived), [accounts]);
+  const directTransactionAccounts = useMemo(() => activeAccounts.filter((account) => account.type !== "cash_reserve"), [activeAccounts]);
 
   const recommendedMethod = (accountId: string) => {
     const account = activeAccounts.find((item) => item.id === accountId);
@@ -64,10 +65,10 @@ export function TransactionDialog({ open, onClose, transaction, draft }: { open:
 
   useEffect(() => {
     if (!open || transaction) return;
-    const initialAccount = activeAccounts[0];
+    const initialAccount = directTransactionAccounts[0];
     setForm({ ...initialEntryForm(undefined, draft), account_id: initialAccount?.id ?? "", payment_method: initialAccount ? recommendedMethod(initialAccount.id) : "" });
     setFormError("");
-  }, [open, transaction, activeAccounts, draft]);
+  }, [open, transaction, directTransactionAccounts, draft]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -79,7 +80,7 @@ export function TransactionDialog({ open, onClose, transaction, draft }: { open:
     }
   }, [open]);
 
-  const selectedAccount = activeAccounts.find((account) => account.id === form.account_id);
+  const selectedAccount = directTransactionAccounts.find((account) => account.id === form.account_id);
   const suggestedRule = form.type === "expense" && !form.category_id ? findCategoryRule(form.description, categoryRules) : null;
   const suggestedCategory = suggestedRule ? categories.find((category) => category.id === suggestedRule.category_id) : null;
   const set = (key: keyof EntryForm, value: string | boolean) => { setFormError(""); setForm((current) => ({ ...current, [key]: value } as EntryForm)); };
@@ -114,7 +115,7 @@ export function TransactionDialog({ open, onClose, transaction, draft }: { open:
       </div>
       <Field label="Description"><Input value={form.description} onChange={(event) => set("description", event.target.value)} placeholder="Coffee, salary, electricity…" /></Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Account"><Select value={form.account_id} onChange={(event) => selectAccount(event.target.value)}><option value="">Choose account</option>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</Select></Field>
+        <Field label="Account" hint="Cash Reserve accounts are available only when you move money."><Select value={form.account_id} onChange={(event) => selectAccount(event.target.value)}><option value="">Choose account</option>{directTransactionAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</Select></Field>
         <Field label="Date"><Input type="date" value={form.transaction_date} onChange={(event) => set("transaction_date", event.target.value)} /></Field>
       </div>
       {form.type === "expense" && <>
